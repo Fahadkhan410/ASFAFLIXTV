@@ -1,259 +1,227 @@
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>JOIN TV4WAP LIVE4WAP VOOT JIOCINEMA </title>
-    <link rel="icon" href="" type="image/x-icon" />
-  
-    
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bostafull Live BDIX TV Server 24/7 BD IPTV</title>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1321980978077433" crossorigin="anonymous"></script>
 
 <style>
-.active{background:red}
-.fix{visibility:hidden}
-.fixed{background:gold;position:fixed}
-.tab-pane{overflow: hidden;
-  border: 1px solid #fff;
-  background-color: #f1f1f1;align:center;vertical-align:middle;vertical-align:middle;align:center;align-items:center;vertical-align:middle;horizontal-align:middle;} 
-  
- .tab-content{background:SeaShell;
-  float: left;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  padding-top: 10px;  padding-left: 4px;
-  padding-right: 4px;
-  padding-bottom: 64px;
+    body {
+        background-color: #121212;
+        margin: 0;
+        padding: 0;
+        color: #f0f0f0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        scroll-behavior: smooth;
+    }
 
-  transition: 0.3s;
-  font-size: 9px;align:center;vertical-align:middle;vertical-align:middle;align:center;align-items:center;vertical-align:middle;horizontal-align:middle;width:100%}
+    /* Header styling */
+    header {
+        background-color: #1e1e1e;
+        color: #fff;
+        padding: 10px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    }
 
+    .logo {
+        color: #ff3c3c;
+        text-decoration: none;
+        font-size: 1.5em;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 20px;
+    }
+
+    .nav-links a {
+        color: #e0e0e0;
+        text-decoration: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        transition: background 0.3s ease;
+    }
+
+    .nav-links a:hover {
+        background-color: #ff3c3c;
+        color: #fff;
+    }
+
+    /* Iframe container */
+    .iframe-container {
+        padding-bottom: auto;
+        aspect-ratio: 16 / 9;
+        position: relative;
+        margin: 20px auto;
+        max-width: 100%;
+        color: black;
+    }
+
+    iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+        border-radius: 0; /* No round edges */
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        color: black;
+    }
+
+    /* Logo container */
+    .logos-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+        padding: 15px;
+        margin: 20px auto;
+    }
+
+.logos-container img {
+    width: 100px;
+    height: 75px;              /* 4:3 container */
+    object-fit: contain;
+    aspect-ratio: 4 / 3;
+    padding: 6px;
+    border: 1px solid #ff3c3c; /* red border */
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s;
+
+    /* Gray background as base */
+    background-color: #4d4d4d;
+
+    /* White 16:9 centered "screen" */
+    background-image: linear-gradient(white, white);
+    background-size: 100% 70%; /* 16:9 = 9/16 = 56.25% of height */
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+    .logos-container img:hover {
+        transform: scale(1.08);
+        box-shadow: 0 0 12px rgba(255, 60, 60, 0.5);
+    }
+
+    /* Category filter */
+    .category-filter {
+        margin: 25px auto;
+        text-align: center;
+    }
+
+    .category-filter select {
+        padding: 10px 14px;
+        font-size: 16px;
+        border-radius: 6px;
+        background-color: #1e1e1e;
+        color: #fff;
+        border: 1px solid #555;
+        outline: none;
+    }
+
+    @media (min-width: 720px) {
+        .iframe-container {
+            max-height: 70vh;
+            max-width: 80%;
+            
+        }
+            .logos-container {
+                max-width: 80vw;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .iframe-container {
+            width: 100%;
+        }
+
+        .nav-links {
+            display: none;
+        }
+    }
+    @media (max-width: 400px) {
+        .logos-container img {
+        width: 80px;
+        height: 60px;
+        }
 </style>
-
-<style>
-a:link, a:visited {color: white;
-  
-
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-}
-
-a:hover, a:active {
-  color: black;
-}
-    
-        :root {
-            --bg-dark: #121212;
-            --bg-medium: #1E1E1E;
-            --text-primary: #FFFFFF;
-            --text-secondary: #B0B0B0;
-            --telegram-primary: #0088cc;
-            --telegram-hover: #0370a7;
-            --transition-speed: 0.3s;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-primary);
-            line-height: 1.6;
-        }
-
-        .container {align:center;
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 20px;
-            width: 100%;
-        }
-
-        
-
-        .telegram-btn {position: fixed;
-            background-color: gold;
-            
-            padding: 2px 2px;
-            
-            text-decoration: none;
-            
-            transition: all 0.2s ease;
-            
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            white-space: nowrap;
-            width: 100%;
-            flex-shrink: 0;
-        }
-.telegram-btn1 {
-            background-color:red;
-            color: gold;
-            padding: 2px 2px;
-            border-radius: 0px;
-            text-decoration: none;
-            font-weight: 900;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            white-space: nowrap;
-            
-            flex-shrink: 0;
-        }
-.telegram-btn2 {
-            background-color: green;
-            color:red;
-            padding: 2px 2px;
-            border-radius: 0px;
-            text-decoration: none;
-            font-weight: 900;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            white-space: nowrap;
-            
-            flex-shrink: 0;
-        }
-
-        
-
-        .file-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 25px;
-            width: 100%;
-        }
-
-        .directory-item {
-            background-color: var(--bg-medium);
-            border-radius: 12px;
-            overflow: hidden;
-            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .directory-item:hover {
-            transform: scale(1.05);
-            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.3);
-        }
-
-        .directory-item img {
-            width: 150px;
-            height: 150px;
-            margin-bottom: 15px;
-            object-fit: contain;
-        }
-
-        .directory-item a {
-            color: var(--text-primary);
-            text-decoration: none;
-            font-size: 1rem;
-            font-weight: 500;  /* Changed from 500 to 400 for lighter font weight */
-            width: 100%;
-        }
-
-        .directory-item b {
-            font-weight: 500;  /* Changed from default bold to 400 for lighter font weight */
-        }
-
-        @media (max-width: 768px) {
-            .file-container {
-                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-                gap: 10px;
-            }
-
-            .directory-item {
-                padding: 10px;
-            }
-
-            .directory-item img {
-                width: 80px;
-                height: 80px;
-            }
-
-            .directory-item a {
-                font-size: 0.8rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .file-container {
-                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-                gap: 10px;
-            }
-
-            .directory-item {
-                padding: 10px;
-            }
-
-            .directory-item img {
-                width: 80px;
-                height: 80px;
-            }
-
-            .directory-item a {
-                font-size: 0.8rem;
-            }
-        }
-    </style>
-  
 </head>
+
 <body>
-    
-        
-            <table class="telegram-btn"><tr><td class="telegram-btn1" width="50%"><a href="https://t.me/tvgotk">LIVE4WAP </a></td><td class="telegram-btn2" width="50%"><a href="https://t.me/tv4wap">TV4WAP </a></td></tr></table>
- <table class="telegram-btn1"><tr><td class="telegram-btn1" width="50%"><a href="https://t.me/tvgotk">LIVE4WAP </a></td><td class="telegram-btn2" width="50%"><a href="https://t.me/tv4wap">TV4WAP </a></td></tr></table>
- 
-   <div class="search-bar"> <input type="text" id="search-input" placeholder="Search Channels" onkeyup="searchChannels()"></div>
+  <header>
+    <a href="https://bostaflix.vercel.app/index.html" class="logo">BOSTAFLIX</a>
+    <nav class="nav-links">
+      <a href="/sports.html">Sports</a>
+      <a href="/news.html">News</a>
+      <a href="/entertainment.html">Entertainment</a>
+      <a href="/movies.html">Movies</a>
+      <a href="/kids.html">Kids</a>
+    </nav>
+  </header>
 
- 
-<div class="tab-content">
-  <div class="tab-pane">
-<div class="container">
-<div id="app" class="file-container"> </div>
-</div></div></div>
+  <div class="iframe-container">
+    <iframe id="videoFrame" allowfullscreen></iframe>
+  </div>
 
+  <div class="logos-container" id="logosContainer">
+    <!-- Dynamic JSON content goes here -->
+  </div>
 
-<script>function getData() {fetch("https://tvgo.neocities.org/Json/zee5.txt") .then(res => {return res.json(); })  .then(json => {console.log(json.data);const html  = json  .map(function(item) { return  "<div data-name='" + item.name + "' class='directory-item'><a href='https://tvgo.neocities.org/APPTV/zee5?id="+item.name+"'><img src='"+item.logo+"'></a><a href='https://tvgo.neocities.org/APPTV/zee5?id="+item.name+"'><b>"+item.name+"</b></a></div>"; }) .join(""); console.log(html);document.querySelector("#app" ).insertAdjacentHTML("afterbegin", html); }) .catch(error => { console.log(error); });}getData();</script>
+  <script>
+    const jsonURL = "https://bostaflix.vercel.app/ayna-proxy.json"; 
+    // 👆 Replace this with your real JSON endpoint
 
+    async function loadChannels() {
+      try {
+        const response = await fetch(jsonURL);
+        const data = await response.json();
+        const channels = data.data.list;
+        const container = document.getElementById("logosContainer");
+        container.innerHTML = "";
 
-<style>.content-table {              text-align: center;position: fixed;             color: #333;position: fixed;bottom:0px;bottom:0px ;text-align:center;background-color:gold; border-collapse: collapse; margin: 1px 0;  font-size: 0.9em;  min-width: 100%;  border-radius: 3px ;  overflow: hidden;  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);}.content-table thead tr {  background-color:gold;  color: #ffffff;  text-align: center;  font-weight: bold}.content-table th,.content-table td {color:#fff;  padding:  1px;border:1px solid gold;background:}.content-table tbody tr {  border: 1px solid #dddddd;}.content-table tbody tr:nth-of-type(even) {  background-color: #f3f3f3;}.content-table tbody tr:last-of-type {  border: px solid #009879;}.content-table tbody tr.active-row {  font-weight: bold;  color: #009879;}</style><table class="content-table">  <thead>     <tr>      <th width="30%"><a href="https://t.me/tvgotk"><img src="https://blogger.googleusercontent.com/img/a/AVvXsEgS2KS8R90zouZEqp4NV8v8mXnUaa0CH4ms-RUnJnRLmYj5zdegccxN10-YXkJArUDOzCjksz77YlETLC63edZYUaDyYBaMPWDVDuyDjYV5bhhhYa5FYgu2qHkd0FcCq-Au_2YXSYza4YGnv1WgRR2O_caQI8nR6SRPJFqKVQICOnjzWhsi3VWe5Nzjewg" width="90%" height="40px"></a></th>            <td><a href="https://t.me/tvgotk"><button><b>t.me/tvgotk</b> </button></a></td>            <th width="30%"><a href="https://t.me/tv4wap"><img src="https://blogger.googleusercontent.com/img/a/AVvXsEgdW6vop6CO-Sw5e7USP7uj_dCdoQJWSYALuTqDa0Kh5m7H0jl1rSMltPVtDrlKIWPxGe5HLwMd8z_TnDWYFB-ePgb_DbI5LJozDpyvP0L7sK-W422Cm02k3hzZ0XzNhYaJ2A80MT5l7nlebxLL16uFvTKSNRPNr3Ctb51dVMShgVNDsu5XHpCtdVSbW0g" width="90%" height="40px"></a></th>      <td><a href="https://t.me/tv4wap"> <button><b>t.me/tv4wap</b></button> </a></td> </tr></table>
+        channels.forEach(ch => {
+          const img = document.createElement("img");
+          img.src = ch.logo;
+          img.alt = ch.title;
+          img.title = ch.title;
+          img.setAttribute("data-category", ch.category);
+          img.onclick = () => loadIframe(`https://bostaflix.vercel.app/ayna.html?id=${encodeURIComponent(ch.title)}`);
+          container.appendChild(img);
+        });
+      } catch (err) {
+        console.error("Error loading JSON:", err);
+      }
+    }
 
+    function loadIframe(url) {
+      document.getElementById("videoFrame").src = url;
+      document.querySelector("header").scrollIntoView({behavior:"smooth"});
+    }
 
-<script> function filterChannels() { var selectedGroup = document.getElementById('group-select').value; var channels = document.querySelectorAll('.directory-item'); channels.forEach(function(channel) { if (selectedGroup === 'all' || channel.getAttribute('data-group') === selectedGroup) { channel.style.display = 'inline-block'; } else { channel.style.display = 'none'; } }); } function searchChannels() { var input = document.getElementById('search-input').value.toLowerCase(); var channels = document.querySelectorAll('.directory-item'); channels.forEach(function(channel) { var name = channel.getAttribute('data-name').toLowerCase(); if (name.includes(input)) { channel.style.display = 'inline-block'; } else { channel.style.display = 'none'; } }); } function searchChannelss() { var input = document.getElementById('search-input').value.toLowerCase(); var channels = document.querySelectorAll('.directory-item'); channels.forEach(function(channel) { var name = channel.getAttribute('data-name').toLowerCase(); if (name.includes(input)) { channel.style.display = 'inline-block'; } else { channel.style.display = 'none'; } }); } const checkbox = document.getElementById("checkbox"); checkbox.addEventListener("change", () => { document.body.classList.toggle("dark-mode"); }); </script>
+    // load channel by ?id=Title
+    function getQueryParam(param) {
+      return new URLSearchParams(window.location.search).get(param);
+    }
+
+    window.onload = async function() {
+      await loadChannels();
+      const qid = getQueryParam("id");
+      if (qid) loadIframe(`ayna.html?id=${encodeURIComponent(qid)}`);
+    };
+  </script>
+
+  <footer style="color:white; background-color:rgba(0,0,0,0.5); padding:10px; text-align:center;">
+    &copy; Bostafull Live by Syed Ashraful Islam Mahbeer.  
+    Embedded content collected from the internet.  
+    Wait up to 1 min to load; if not, change server.
+  </footer>
+</body>
+</html>
