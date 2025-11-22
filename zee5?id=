@@ -34,7 +34,7 @@
                     const url = encodeURIComponent(streamInfo.id);
                        const key1 = encodeURIComponent(streamInfo.id1);
                        const key2 = encodeURIComponent(streamInfo.id2);   
-                 iframe.src =`https://tvwap.github.io/p3?mpd=${url}&keyId=${key1}&key=${key2}`;
+                 iframe.src =`p3?mpd=${url}&keyId=${key1}&key=${key2}`;
                     } else if (streamInfo.m3u8) { iframe.src=streamInfo.m3u8;
                     }
                 });
