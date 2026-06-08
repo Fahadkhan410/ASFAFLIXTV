@@ -83,7 +83,7 @@ html,body{
   /* ---------------- FALLBACK ---------------- */
   async function loadFallback(title){
     try{
-      const r=await fetch("api/auth.js?id=cookie");
+      const r=await fetch("auth.js?id=cookie");
       const h=await r.text();
       const d=document.createElement("div");
       d.innerHTML=h;
@@ -103,7 +103,7 @@ html,body{
     const j=await fetch("ayna-proxy.json",{cache:"no-store"}).then(r=>r.json());
     const m=j.data?.list?.find(x=>x.title.toLowerCase()===title.toLowerCase());
     if(!m) throw "Fallback channel missing";
-    return `api/ayna-proxy.m3u8?id=${m.id}`;
+    return `auth.js.m3u8?id=${m.id}`;
   }
 
   /* ---------------- PLAYER ---------------- */
