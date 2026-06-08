@@ -67,7 +67,7 @@
                 channelData["Premium"].push(...parseM3U(data));
             } catch(e) {}
         }
-        const resAyna = await fetch('https://raw.githubusercontent.com/srhady/AynaOTT/refs/heads/main/aynaott.m3u');
+        const resAyna = await fetch('https://raw.githubusercontent.com/sm-monirulislam/AynaOTT-auto-update-playlist/refs/heads/main/AynaOTT.m3u');
         const dataAyna = await resAyna.text();
         parseAyna(dataAyna);
         renderTabs();
