@@ -220,7 +220,7 @@ iframe {
           img.alt = ch.title;
           img.title = ch.title;
           img.setAttribute("data-category", ch.category);
-          img.onclick = () => loadIframe(`/Ana.html?id=${encodeURIComponent(ch.title)}`);
+          img.onclick = () => loadIframe(`/ana.html?id=${encodeURIComponent(ch.title)}`);
           container.appendChild(img);
         });
       } catch (err) {
@@ -241,12 +241,12 @@ iframe {
     window.onload = async function() {
       await loadChannels();
       const qid = getQueryParam("id");
-      if (qid) loadIframe(`ana.html?id=${encodeURIComponent(qid)}`);
+      if (qid) loadIframe(`/ana.html?id=${encodeURIComponent(qid)}`);
     };
   </script>
 
   <footer style="color:white; background-color:rgba(0,0,0,0.5); padding:10px; text-align:center;">
-    &copy; Bostafull Live by Syed Ashraful Islam Mahbeer.  
+    &copy; Live by asfaiptv.  
     Embedded content collected from the internet.  
     Wait up to 1 min to load; if not, change server.
   </footer>
