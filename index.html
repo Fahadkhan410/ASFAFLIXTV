@@ -203,7 +203,7 @@ iframe {
   </div>
 
   <script>
-    const jsonURL = "https://bostaflix.vercel.app/ayna-proxy.json"; 
+    const jsonURL = "https://raw.githubusercontent.com/sm-monirulislam/AynaOTT-auto-update-playlist/refs/heads/main/AynaOTT.json"; 
     // 👆 Replace this with your real JSON endpoint
 
     async function loadChannels() {
@@ -220,7 +220,7 @@ iframe {
           img.alt = ch.title;
           img.title = ch.title;
           img.setAttribute("data-category", ch.category);
-          img.onclick = () => loadIframe(`https://bostaflix.vercel.app/ayna.html?id=${encodeURIComponent(ch.title)}`);
+          img.onclick = () => loadIframe(`/Ana.html?id=${encodeURIComponent(ch.title)}`);
           container.appendChild(img);
         });
       } catch (err) {
