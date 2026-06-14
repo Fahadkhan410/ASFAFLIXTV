@@ -14,7 +14,12 @@
         #sidebar-header { padding: 20px; background-color: #1e1e1e; border-bottom: 1px solid #333; }
         #search-box { width: 100%; padding: 10px; background: #000; border: 1px solid #444; border-radius: 6px; color: #fff; margin-top: 10px; }
         
-        .tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #121212; }
+        /* New Group Dropdown Styling */
+        #group-container { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+        #group-container label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+        #group-select { width: 100%; padding: 8px 10px; background: #252525; border: 1px solid #444; border-radius: 4px; color: #fff; outline: none; cursor: pointer; }
+        
+        .tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #121212; margin-top: 10px; }
         .tab-btn { padding: 12px 5px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.8rem; }
         .tab-btn.active { color: #0078d4; border-bottom: 2px solid #0078d4; background: #181818; }
 
@@ -22,13 +27,7 @@
         .channel-list { list-style: none; display: none; }
         .channel-list.active { display: block; }
         
-        /* Accordion / Group Layout */
-        .channel-group { border-bottom: 1px solid #222; }
-        .group-title { padding: 12px 16px; font-weight: 600; font-size: 0.9rem; background: #202020; color: #ccc; cursor: pointer; user-select: none; outline: none; }
-        .group-title:hover { background: #282828; color: #fff; }
-        .group-content { list-style: none; padding-left: 0; }
-
-        .channel-item { padding: 12px 16px; display: flex; align-items: center; cursor: pointer; border-bottom: 1px solid #1a1a1a; background: #181818; }
+        .channel-item { padding: 12px 16px; display: flex; align-items: center; cursor: pointer; border-bottom: 1px solid #222; }
         .channel-item:hover { background: #252525; }
         .channel-item.active { background: #0078d4; }
         
@@ -47,7 +46,14 @@
     <div id="sidebar">
         <div id="sidebar-header">
             <h2>Live Network</h2>
-            <input type="text" id="search-box" placeholder="Filter channels or categories..." oninput="filterChannels()">
+            <input type="text" id="search-box" placeholder="Filter channels..." oninput="filterChannels()">
+            
+            <div id="group-container">
+                <label for="group-select">Category / Group</label>
+                <select id="group-select" onchange="filterChannels()">
+                    <option value="all">All Categories</option>
+                </select>
+            </div>
         </div>
         
         <div class="tabs">
@@ -58,10 +64,10 @@
         </div>
 
         <div id="channel-list-container">
-            <div id="tapmad-list" class="channel-list active"></div>
-            <div id="asfalive-list" class="channel-list"></div>
-            <div id="bdixtv-list" class="channel-list"></div>
-            <div id="mixtv-list" class="channel-list"></div>
+            <ul id="tapmad-list" class="channel-list active"></ul>
+            <ul id="asfalive-list" class="channel-list"></ul>
+            <ul id="bdixtv-list" class="channel-list"></ul>
+            <ul id="mixtv-list" class="channel-list"></ul>
         </div>
     </div>
 
@@ -82,6 +88,7 @@
         };
 
         let player = null;
+        let MasterGroupSet = new Set(); // Stores compiled list of group titles found inside M3Us
 
         document.addEventListener("DOMContentLoaded", () => {
             player = videojs('video-player', {
@@ -107,62 +114,51 @@
                     parseM3U(text, document.getElementById(`${key}-list`));
                 } catch(e) { console.error(`Error loading ${key}`); }
             }
+            updateGroupDropdown();
         }
 
         function parseM3U(data, container) {
             const lines = data.split('\n');
-            const groups = {};
-
+            let html = '';
             for (let i = 0; i < lines.length; i++) {
                 if (lines[i].startsWith('#EXTINF:')) {
-                    const infoLine = lines[i];
+                    const name = lines[i].split(',')[1]?.trim() || 'Unknown';
+                    const logo = (lines[i].match(/tvg-logo="([^"]+)"/) || [])[1] || '';
                     
-                    // Extract channel configurations
-                    const name = infoLine.split(',')[1]?.trim() || 'Unknown';
-                    const logo = (infoLine.match(/tvg-logo="([^"]+)"/) || [])[1] || '';
+                    // Group parsing extraction logic
+                    const group = (lines[i].match(/group-title="([^"]+)"/) || [])[1] || 'Uncategorized';
+                    MasterGroupSet.add(group); // Save reference for our selection dropdown element
                     
-                    // Target group via standard attribute extraction, fallback to legacy inline grouping rules
-                    let groupName = (infoLine.match(/group-title="([^"]+)"/) || [])[1] || 'Uncategorized';
-                    if (groupName === 'Uncategorized' && i > 0 && lines[i-1].startsWith('#EXTGRP:')) {
-                        groupName = lines[i-1].replace('#EXTGRP:', '').trim();
-                    }
-
                     let url = '';
                     for (let j = i + 1; j < lines.length; j++) {
-                        if (lines[j].trim().startsWith('http')) { 
-                            url = lines[j].trim(); 
-                            break; 
-                        }
+                        if (lines[j].startsWith('http')) { url = lines[j].trim(); break; }
                     }
-
                     if (url) {
-                        if (!groups[groupName]) groups[groupName] = [];
-                        groups[groupName].push({ name, logo, url });
+                        // Embedded group parameter inside dataset matrix element
+                        html += `
+                        <li class="channel-item" data-group="${group}" onclick="play('${url}', '${name}', this)">
+                            <img class="channel-logo" src="${logo}" onerror="this.style.display='none'">
+                            <span class="channel-name">${name}</span>
+                        </li>`;
                     }
                 }
             }
-
-            // Build Accordion Components (using native details/summary HTML blocks)
-            let html = '';
-            for (const [groupTitle, channels] of Object.entries(groups)) {
-                html += `
-                <details class="channel-group" open>
-                    <summary class="group-title">${groupTitle} (${channels.length})</summary>
-                    <ul class="group-content">`;
-                
-                channels.forEach(ch => {
-                    html += `
-                    <li class="channel-item" onclick="play('${ch.url}', '${ch.name}', this)">
-                        <img class="channel-logo" src="${ch.logo}" onerror="this.style.display='none'">
-                        <span class="channel-name">${ch.name}</span>
-                    </li>`;
-                });
-
-                html += `
-                    </ul>
-                </details>`;
-            }
             container.innerHTML = html;
+        }
+
+        // Rebuilds selector layout automatically based on categories present inside source materials
+        function updateGroupDropdown() {
+            const selectEl = document.getElementById('group-select');
+            
+            // Sort categories alphabetically
+            const sortedGroups = Array.from(MasterGroupSet).sort();
+            
+            sortedGroups.forEach(groupName => {
+                const opt = document.createElement('option');
+                opt.value = groupName;
+                opt.textContent = groupName;
+                selectEl.appendChild(opt);
+            });
         }
 
         function play(url, name, element) {
@@ -184,44 +180,39 @@
             if (player) {
                 player.src({ src: url, type: type });
                 player.ready(() => {
-                    player.play().catch(error => console.log("Playback interaction capture:", error));
+                    player.play().catch(error => {
+                        console.log("Stream delivery interrupted: ", error);
+                    });
                 });
             }
         }
 
         function filterChannels() {
-            const q = document.getElementById('search-box').value.toLowerCase();
+            const searchInput = document.getElementById('search-box').value.toLowerCase();
+            const chosenGroup = document.getElementById('group-select').value;
             
             document.querySelectorAll('.channel-list').forEach(list => {
                 const isTabActive = list.classList.contains('active');
-                const accordions = list.querySelectorAll('.channel-group');
+                const items = list.querySelectorAll('.channel-item');
                 
-                accordions.forEach(group => {
-                    const items = group.querySelectorAll('.channel-item');
-                    let visibleCount = 0;
-
-                    items.forEach(el => {
-                        const matchesSearch = el.innerText.toLowerCase().includes(q);
-                        
-                        if (q === '') {
-                            el.style.display = isTabActive ? 'flex' : 'none';
-                            visibleCount++;
+                items.forEach(el => {
+                    const elGroup = el.getAttribute('data-group');
+                    const matchesSearch = el.innerText.toLowerCase().includes(searchInput);
+                    const matchesGroup = (chosenGroup === 'all' || elGroup === chosenGroup);
+                    
+                    if (searchInput === '') {
+                        // Normal operations context: bound rules strictly inside selected platform navigation container context
+                        if (isTabActive && matchesGroup) {
+                            el.style.display = 'flex';
                         } else {
-                            const showItem = matchesSearch;
-                            el.style.display = showItem ? 'flex' : 'none';
-                            if (showItem) visibleCount++;
+                            el.style.display = 'none';
                         }
-                    });
-
-                    // Manage visibility and structural layout state of groups
-                    if (q === '') {
-                        group.style.display = isTabActive ? 'block' : 'none';
                     } else {
-                        if (visibleCount > 0) {
-                            group.style.display = 'block';
-                            group.setAttribute('open', ''); // Auto expand categories containing search hits
+                        // Global search override: evaluate elements matching both chosen group and search keyword terms
+                        if (matchesSearch && matchesGroup) {
+                            el.style.display = 'flex';
                         } else {
-                            group.style.display = 'none';
+                            el.style.display = 'none';
                         }
                     }
                 });
