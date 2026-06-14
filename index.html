@@ -14,15 +14,17 @@
         #sidebar-header { padding: 20px; background-color: #1e1e1e; border-bottom: 1px solid #333; }
         #search-box { width: 100%; padding: 10px; background: #000; border: 1px solid #444; border-radius: 6px; color: #fff; margin-top: 10px; }
         
-        /* Group Dropdown Styling */
+        /* Category Dropdown */
         #group-container { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
         #group-container label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
         #group-select { width: 100%; padding: 8px 10px; background: #252525; border: 1px solid #444; border-radius: 4px; color: #fff; outline: none; cursor: pointer; }
         
+        /* Tabs */
         .tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #121212; margin-top: 10px; }
-        .tab-btn { padding: 12px 5px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.8rem; text-transform: capitalize; }
+        .tab-btn { padding: 12px 5px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.8rem; }
         .tab-btn.active { color: #0078d4; border-bottom: 2px solid #0078d4; background: #181818; }
 
+        /* Channel List Items */
         #channel-list-container { flex: 1; overflow-y: auto; }
         .channel-list { list-style: none; display: none; }
         .channel-list.active { display: block; }
@@ -34,7 +36,7 @@
         .channel-logo { width: 36px; height: 36px; border-radius: 4px; margin-right: 15px; background: #000; object-fit: cover; }
         .channel-name { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* Player Container Customizations */
+        /* Player Layout */
         #player-container { flex: 1; display: flex; flex-direction: column; background: #000; justify-content: center; align-items: center; position: relative; }
         #stream-title { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; border: 1px solid #444; z-index: 10; pointer-events: none; }
         
@@ -50,17 +52,17 @@
             
             <div id="group-container">
                 <label for="group-select">Category / Group</label>
-                <select id="group-select" onchange="handleGroupChange()">
+                <select id="group-select" onchange="filterChannels()">
                     <option value="all">All Categories</option>
                 </select>
             </div>
         </div>
         
         <div class="tabs">
-            <button id="tab-btn-tapmad" class="tab-btn active" onclick="switchTab('tapmad')">Tapmad</button>
-            <button id="tab-btn-asfalive" class="tab-btn" onclick="switchTab('asfalive')">ASFA</button>
-            <button id="tab-btn-bdixtv" class="tab-btn" onclick="switchTab('bdixtv')">BDIX</button>
-            <button id="tab-btn-mixtv" class="tab-btn" onclick="switchTab('mixtv')">MIX</button>
+            <button class="tab-btn active" onclick="switchTab('tapmad')">Tapmad</button>
+            <button class="tab-btn" onclick="switchTab('asfalive')">ASFA</button>
+            <button class="tab-btn" onclick="switchTab('bdixtv')">BDIX</button>
+            <button class="tab-btn" onclick="switchTab('mixtv')">MIX</button>
         </div>
 
         <div id="channel-list-container">
@@ -88,8 +90,7 @@
         };
 
         let player = null;
-        let currentTabId = 'tapmad'; 
-        let MasterGroupSet = new Set(); // Stores all distinct groups globally across all m3u lines
+        let MasterGroupSet = new Set(); // Global store of loaded categories
 
         document.addEventListener("DOMContentLoaded", () => {
             player = videojs('video-player', {
@@ -101,18 +102,11 @@
         });
 
         function switchTab(id) {
-            currentTabId = id;
-            
-            // Toggle button states cleanly
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.id === `tab-btn-${id}`);
+                const targetText = id === 'bdixtv' ? 'bdix' : id;
+                btn.classList.toggle('active', btn.innerText.toLowerCase() === targetText);
             });
-            
-            // Toggle content container panels
-            document.querySelectorAll('.channel-list').forEach(list => {
-                list.classList.toggle('active', list.id === `${id}-list`);
-            });
-            
+            document.querySelectorAll('.channel-list').forEach(list => list.classList.toggle('active', list.id === `${id}-list`));
             filterChannels();
         }
 
@@ -123,10 +117,9 @@
                     const res = await fetch(url);
                     const text = await res.text();
                     parseM3U(text, document.getElementById(`${key}-list`));
-                } catch(e) { console.error(`Error loading ${key}:`, e); }
+                } catch(e) { console.error(`Error loading ${key}`); }
             }
-            // Populate our drop-down globally once data is compiled
-            updateGlobalGroupDropdown();
+            updateGroupDropdown();
         }
 
         function parseM3U(data, container) {
@@ -138,8 +131,8 @@
                     const logo = (lines[i].match(/tvg-logo="([^"]+)"/) || [])[1] || '';
                     const group = (lines[i].match(/group-title="([^"]+)"/) || [])[1] || 'Uncategorized';
                     
-                    MasterGroupSet.add(group); // Save category metadata context globally
-
+                    MasterGroupSet.add(group); 
+                    
                     let url = '';
                     for (let j = i + 1; j < lines.length; j++) {
                         if (lines[j].trim().startsWith('http')) { 
@@ -148,8 +141,12 @@
                         }
                     }
                     if (url) {
+                        // Quotes and apostrophes are cleanly encoded to protect data-attributes
+                        const escapedGroup = group.replace(/"/g, '&quot;');
+                        const escapedName = name.replace(/'/g, "\\'");
+                        
                         html += `
-                        <li class="channel-item" data-group="${group.replace(/"/g, '&quot;')}" onclick="play('${url}', '${name.replace(/'/g, "\\'")}', this)">
+                        <li class="channel-item" data-group="${escapedGroup}" onclick="play('${url}', '${escapedName}', this)">
                             <img class="channel-logo" src="${logo}" onerror="this.style.display='none'">
                             <span class="channel-name">${name}</span>
                         </li>`;
@@ -159,12 +156,10 @@
             container.innerHTML = html;
         }
 
-        // Generates an immutable master group matrix list for user select operations
-        function updateGlobalGroupDropdown() {
+        function updateGroupDropdown() {
             const selectEl = document.getElementById('group-select');
-            selectEl.innerHTML = '<option value="all">All Categories</option>';
-            
             const sortedGroups = Array.from(MasterGroupSet).sort();
+            
             sortedGroups.forEach(groupName => {
                 const opt = document.createElement('option');
                 opt.value = groupName;
@@ -173,58 +168,33 @@
             });
         }
 
-        // AUTO-SWITCH TAB LOGIC HERE
-        function handleGroupChange() {
-            const chosenGroup = document.getElementById('group-select').value;
-            
-            if (chosenGroup !== 'all') {
-                // Look for the first list tab containing a channel belonging to this group option selection
-                for (const key of Object.keys(PLAYLISTS)) {
-                    const listEl = document.getElementById(`${key}-list`);
-                    if (listEl && listEl.querySelector(`[data-group="${chosenGroup}"]`)) {
-                        // Match Found: Switch our view layer directly to that list's tab layout
-                        switchTab(key);
-                        return; // Exit process frame once tab destination has targeted accurately
-                    }
-                }
-            }
-            // Execute layout refresh constraints naturally
-            filterChannels();
-        }
-
         function play(url, name, element) {
             document.getElementById('stream-title').innerText = name;
             document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
 
             let type = 'video/mp4';
-            const cleanUrl = url.split('?')[0].toLowerCase();
-            if (cleanUrl.includes('.m3u8')) {
-                type = 'application/x-mpegURL';
-            } else if (cleanUrl.includes('.mpd')) {
-                type = 'application/dash+xml';
-            } else if (cleanUrl.includes('.webm')) {
-                type = 'video/webm';
-            } else if (cleanUrl.includes('.ogg') || cleanUrl.includes('.ogv')) {
-                type = 'video/ogg';
-            }
+            const testUrl = url.toLowerCase().split('?')[0];
+            if (testUrl.includes('.m3u8')) type = 'application/x-mpegURL';
+            else if (testUrl.includes('.mpd')) type = 'application/dash+xml';
+            else if (testUrl.includes('.webm')) type = 'video/webm';
+            else if (testUrl.includes('.ogg') || testUrl.includes('.ogv')) type = 'video/ogg';
 
             if (player) {
                 player.src({ src: url, type: type });
                 player.ready(() => {
-                    player.play().catch(error => {
-                        console.log("Stream delivery interrupted: ", error);
-                    });
+                    player.play().catch(err => console.log("Playback interaction deferred:", err));
                 });
             }
         }
 
+        // Handles filtering live content based on current selected tab and selected category group
         function filterChannels() {
             const searchInput = document.getElementById('search-box').value.toLowerCase();
             const chosenGroup = document.getElementById('group-select').value;
             
             document.querySelectorAll('.channel-list').forEach(list => {
-                const isTabActive = list.id === `${currentTabId}-list`;
+                const isTabActive = list.classList.contains('active');
                 const items = list.querySelectorAll('.channel-item');
                 
                 items.forEach(el => {
@@ -232,11 +202,20 @@
                     const matchesSearch = el.querySelector('.channel-name').innerText.toLowerCase().includes(searchInput);
                     const matchesGroup = (chosenGroup === 'all' || elGroup === chosenGroup);
                     
-                    // Filter down items inside the targeted viewport frame interface environment context directly
-                    if (isTabActive && matchesSearch && matchesGroup) {
-                        el.style.display = 'flex';
+                    if (searchInput === '') {
+                        // Default Mode: Channels must exist within the active navigation tab AND match category choice
+                        if (isTabActive && matchesGroup) {
+                            el.style.display = 'flex';
+                        } else {
+                            el.style.display = 'none';
+                        }
                     } else {
-                        el.style.display = 'none';
+                        // Override Search Mode: Reveal matching components across tabs if category restriction allows it
+                        if (matchesSearch && matchesGroup) {
+                            el.style.display = 'flex';
+                        } else {
+                            el.style.display = 'none';
+                        }
                     }
                 });
             });
