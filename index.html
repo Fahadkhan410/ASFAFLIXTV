@@ -3,202 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Live TV Portal</title>
+    <title>Live Match Stream</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: #121212; color: #ffffff; display: flex; height: 100vh; overflow: hidden; }
-
-        /* Sidebar Styling */
-        #sidebar { width: 340px; background-color: #181818; border-right: 1px solid #333; display: flex; flex-direction: column; transition: all 0.3s ease; }
-        #sidebar-header { padding: 20px; background-color: #1e1e1e; border-bottom: 1px solid #333; }
-        #search-box { width: 100%; padding: 10px; background: #000; border: 1px solid #444; border-radius: 6px; color: #fff; margin-top: 10px; font-size: 1rem; }
-        
-        .tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #121212; }
-        .tab-btn { padding: 14px 5px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.85rem; font-weight: 600; }
-        .tab-btn.active { color: #0078d4; border-bottom: 2px solid #0078d4; background: #181818; }
-
-        #channel-list-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-        .channel-list { list-style: none; display: none; }
-        .channel-list.active { display: block; }
-        
-        .channel-item { padding: 14px 16px; display: flex; align-items: center; cursor: pointer; border-bottom: 1px solid #222; }
-        .channel-item:hover { background: #252525; }
-        .channel-item.active { background: #0078d4; }
-        
-        .channel-logo { width: 40px; height: 40px; border-radius: 6px; margin-right: 15px; background: #000; object-fit: cover; }
-        .channel-name { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        /* Video Player Layer */
-        #player-container { flex: 1; display: flex; flex-direction: column; background: #000; justify-content: center; align-items: center; position: relative; }
-        video { width: 100%; max-height: 100vh; object-fit: contain; background: #000; }
-        #stream-title { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.85); padding: 8px 16px; border-radius: 20px; border: 1px solid #444; z-index: 10; font-size: 0.9rem; pointer-events: none; }
-
-        /* Mobile Adaptive Breakpoints */
-        @media (max-width: 768px) {
-            body { flex-direction: column; overflow: auto; }
-            #sidebar { width: 100%; height: 50vh; border-right: none; border-top: 1px solid #333; order: 2; }
-            #player-container { width: 100%; height: 50vh; order: 1; position: sticky; top: 0; z-index: 100; }
-            video { height: 100%; }
-            #stream-title { top: 10px; left: 10px; font-size: 0.8rem; padding: 6px 12px; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #111;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .stream-container {
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        video {
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            background-color: #000;
+        }
+        h1 {
+            font-size: 1.5rem;
+            text-align: center;
+            margin-bottom: 15px;
         }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <div id="sidebar-header">
-            <h2>Live Network</h2>
-            <input type="text" id="search-box" placeholder="Search channels..." oninput="filterChannels()">
-        </div>
-        
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('tapmad')">Tapmad</button>
-            <button class="tab-btn" onclick="switchTab('asfalive')">ASFA</button>
-            <button class="tab-btn" onclick="switchTab('bdixtv')">BDIX</button>
-            <button class="tab-btn" onclick="switchTab('mixtv')">MIX</button>
-        </div>
-
-        <div id="channel-list-container">
-            <ul id="tapmad-list" class="channel-list active"></ul>
-            <ul id="asfalive-list" class="channel-list"></ul>
-            <ul id="bdixtv-list" class="channel-list"></ul>
-            <ul id="mixtv-list" class="channel-list"></ul>
-        </div>
-    </div>
-
-    <div id="player-container">
-        <div id="stream-title">Select a channel</div>
-        <video id="video" controls autoplay playsinline></video>
+    <div class="stream-container">
+        <h1>Live Stream</h1>
+        <video id="video" controls autoplay playsinline muted></video>
     </div>
 
     <script>
-        const PLAYLISTS = {
-            tapmad: 'https://raw.githubusercontent.com/srhady/tapmad-bd/refs/heads/main/tapmad_bd.m3u',
-            asfalive: 'https://raw.githubusercontent.com/Fahadkhan410/bdtest/refs/heads/main/cha.m3u',
-            bdixtv: 'https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u',
-            mixtv: ''
-        };
+        // Your live stream URL
+        const streamUrl = "http://180.94.28.28:8097/Fifa-2026/index.fmp4.m3u8?token=98432116951be6ea3920335200f43cbca6f86b50-a1b6cd6f35e6aaa2dc380844b5636927-1781443221-1781439621";
+        const video = document.getElementById('video');
 
-        let hlsEngine = null;
-        let dashEngine = null;
-
-        function switchTab(id) {
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('onclick').includes(`'${id}'`));
-            });
-            document.querySelectorAll('.channel-list').forEach(list => {
-                list.classList.toggle('active', list.id === `${id}-list`);
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(streamUrl);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                video.play();
             });
         }
-
-        async function init() {
-            for (const [key, url] of Object.entries(PLAYLISTS)) {
-                if(!url) continue;
-                try {
-                    const res = await fetch(url);
-                    const text = await res.text();
-                    parseM3U(text, document.getElementById(`${key}-list`));
-                } catch(e) { console.error(`Failed to sync source engine for: ${key}`); }
-            }
-        }
-
-        function parseM3U(data, container) {
-            const lines = data.split('\n').map(line => line.trim());
-            let html = '';
-            
-            for (let i = 0; i < lines.length; i++) {
-                if (lines[i].startsWith('#EXTINF:')) {
-                    const name = lines[i].split(',')[1]?.trim() || 'Unknown Channel';
-                    const logo = (lines[i].match(/tvg-logo="([^"]+)"/) || [])[1] || '';
-                    let url = '';
-                    
-                    for (let j = i + 1; j < lines.length; j++) {
-                        if (lines[j].startsWith('#EXTINF:')) break;
-                        if (lines[j].startsWith('http')) { 
-                            url = lines[j]; // Pulls exact url string, maintaining structural query tokens intact
-                            break; 
-                        }
-                    }
-                    
-                    if (url) {
-                        const safeName = name.replace(/'/g, "\\'");
-                        // Base64 encoding parameters safely maps token data configurations inside standard HTML strings
-                        const encodedUrl = btoa(unescape(encodeURIComponent(url)));
-                        
-                        html += `
-                        <li class="channel-item" onclick="prepareStream('${encodedUrl}', '${safeName}', this)">
-                            <img class="channel-logo" src="${logo}" onerror="this.style.display='none'">
-                            <span class="channel-name">${name}</span>
-                        </li>`;
-                    }
-                }
-            }
-            container.innerHTML = html;
-        }
-
-        function prepareStream(encodedUrl, name, element) {
-            const url = decodeURIComponent(escape(atob(encodedUrl)));
-            play(url, name, element);
-        }
-
-        function play(url, name, element) {
-            document.getElementById('stream-title').innerText = name;
-            document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
-
-            const video = document.getElementById('video');
-            
-            // Teardown and reset current engine environments
-            if (hlsEngine) { hlsEngine.destroy(); hlsEngine = null; }
-            if (dashEngine) { dashEngine.reset(); dashEngine = null; }
-            video.src = "";
-
-            const lowerUrl = url.toLowerCase();
-
-            // 1. MPEG-DASH Engine (.mpd structures)
-            if (lowerUrl.includes('.mpd')) {
-                dashEngine = dashjs.MediaPlayer().create();
-                dashEngine.initialize(video, url, true);
-            } 
-            // 2. HLS & fMP4 HLS Engine (.m3u8 structures)
-            else if (lowerUrl.includes('.m3u8')) {
-                if (Hls.isSupported()) {
-                    hlsEngine = new Hls({
-                        progressive: true,
-                        lowLatencyMode: true
-                    });
-                    hlsEngine.loadSource(url);
-                    hlsEngine.attachMedia(video);
-                    hlsEngine.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    // Apple Native Core Fallback (Safari Mobile/iOS)
-                    video.src = url;
-                    video.play().catch(() => {});
-                }
-            } 
-            // 3. Native File Formats (MP4, WebM, Direct Streams)
-            else {
-                video.src = url;
-                video.play().catch(() => {});
-            }
-
-            // Mobile view adjustment auto-scrolls to viewport player once selected
-            if(window.innerWidth <= 768) {
-                document.getElementById('player-container').scrollIntoView({ behavior: 'smooth' });
-            }
-        }
-
-        function filterChannels() {
-            const q = document.getElementById('search-box').value.toLowerCase();
-            document.querySelectorAll('.channel-item').forEach(el => {
-                const text = el.querySelector('.channel-name').innerText.toLowerCase();
-                el.style.display = text.includes(q) ? 'flex' : 'none';
+        // Native support check (primarily for Safari on Mac/iOS)
+        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = streamUrl;
+            video.addEventListener('loadedmetadata', function() {
+                video.play();
             });
+        } else {
+            alert("Your browser does not support HLS streaming.");
         }
-
-        init();
     </script>
+
 </body>
 </html>
