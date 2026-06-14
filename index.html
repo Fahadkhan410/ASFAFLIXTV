@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Universal Live TV Portal</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #121212; color: #ffffff; display: flex; height: 100vh; overflow: hidden; }
@@ -30,8 +31,8 @@
         .channel-name { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         #player-container { flex: 1; display: flex; flex-direction: column; background: #000; justify-content: center; align-items: center; position: relative; }
-        video { width: 100%; max-height: 100vh; }
-        #stream-title { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; border: 1px solid #444; z-index: 10; }
+        video { width: 100%; max-width: 100%; max-height: 100vh; object-fit: contain; }
+        #stream-title { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; border: 1px solid #444; z-index: 10; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -67,14 +68,19 @@
             tapmad: 'https://raw.githubusercontent.com/srhady/tapmad-bd/refs/heads/main/tapmad_bd.m3u',
             asfalive: 'https://raw.githubusercontent.com/Fahadkhan410/bdtest/refs/heads/main/cha.m3u',
             bdixtv: 'https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u',
-            mixtv: ''
+            mixtv: '' // You can insert a mixed HLS/DASH .m3u link here
         };
 
-        let hls = null;
+        let hlsPlayer = null;
+        let dashPlayer = null;
 
         function switchTab(id) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.innerText.toLowerCase() === id));
-            document.querySelectorAll('.channel-list').forEach(list => list.classList.toggle('active', list.id === `${id}-list`));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('onclick').includes(`'${id}'`));
+            });
+            document.querySelectorAll('.channel-list').forEach(list => {
+                list.classList.toggle('active', list.id === `${id}-list`);
+            });
         }
 
         async function init() {
@@ -84,24 +90,34 @@
                     const res = await fetch(url);
                     const text = await res.text();
                     parseM3U(text, document.getElementById(`${key}-list`));
-                } catch(e) { console.error(`Error loading ${key}`); }
+                } catch(e) { console.error(`Error loading ${key}:`, e); }
             }
         }
 
         function parseM3U(data, container) {
-            const lines = data.split('\n');
+            const lines = data.split('\n').map(line => line.trim());
             let html = '';
+            
             for (let i = 0; i < lines.length; i++) {
                 if (lines[i].startsWith('#EXTINF:')) {
-                    const name = lines[i].split(',')[1]?.trim() || 'Unknown';
+                    const name = lines[i].split(',')[1]?.trim() || 'Unknown Channel';
                     const logo = (lines[i].match(/tvg-logo="([^"]+)"/) || [])[1] || '';
                     let url = '';
+                    
                     for (let j = i + 1; j < lines.length; j++) {
-                        if (lines[j].startsWith('http')) { url = lines[j].trim(); break; }
+                        if (lines[j].startsWith('#EXTINF:')) break; 
+                        if (lines[j].startsWith('http')) { 
+                            url = lines[j]; 
+                            break; 
+                        }
                     }
+                    
                     if (url) {
+                        const safeUrl = encodeURI(url);
+                        const safeName = name.replace(/'/g, "\\'");
+                        
                         html += `
-                        <li class="channel-item" onclick="play('${url}', '${name}', this)">
+                        <li class="channel-item" onclick="play('${safeUrl}', '${safeName}', this)">
                             <img class="channel-logo" src="${logo}" onerror="this.style.display='none'">
                             <span class="channel-name">${name}</span>
                         </li>`;
@@ -111,38 +127,66 @@
             container.innerHTML = html;
         }
 
+        function resetPlayers() {
+            const video = document.getElementById('video');
+            
+            if (hlsPlayer) { 
+                hlsPlayer.destroy(); 
+                hlsPlayer = null; 
+            }
+            if (dashPlayer) {
+                dashPlayer.reset();
+                dashPlayer = null;
+            }
+            
+            video.removeAttribute('src');
+            video.load();
+        }
+
         function play(url, name, element) {
             document.getElementById('stream-title').innerText = name;
             document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
 
             const video = document.getElementById('video');
-            
-            // Cleanup existing HLS instance
-            if (hls) { hls.destroy(); hls = null; }
+            resetPlayers(); // Strip previous instances and sources
 
-            // Handle HLS vs Standard Video Formats
-            if (url.includes('.m3u8')) {
+            const lowerUrl = url.toLowerCase();
+
+            // 1. MPEG-DASH Pipeline (.mpd)
+            if (lowerUrl.includes('.mpd')) {
+                dashPlayer = dashjs.MediaPlayer().create();
+                dashPlayer.initialize(video, url, true);
+                dashPlayer.on(dashjs.MediaPlayer.events.CAN_PLAY, () => {
+                    video.play().catch(e => console.log("Autoplay context interception triggered."));
+                });
+            } 
+            // 2. HLS Pipeline (.m3u8)
+            else if (lowerUrl.includes('.m3u8')) {
                 if (Hls.isSupported()) {
-                    hls = new Hls();
-                    hls.loadSource(url);
-                    hls.attachMedia(video);
-                    video.play();
+                    hlsPlayer = new Hls({ maxMaxBufferLength: 10 });
+                    hlsPlayer.loadSource(url);
+                    hlsPlayer.attachMedia(video);
+                    hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                        video.play().catch(e => console.log("Autoplay context interception triggered."));
+                    });
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                     video.src = url;
-                    video.play();
+                    video.play().catch(e => console.log("Autoplay context interception triggered."));
                 }
-            } else {
-                // Fallback for MP4 or other native formats
+            } 
+            // 3. Fallback Native Video Formats (MP4, MKV, WebM, etc.)
+            else {
                 video.src = url;
-                video.play();
+                video.play().catch(e => console.log("Autoplay context interception triggered."));
             }
         }
 
         function filterChannels() {
             const q = document.getElementById('search-box').value.toLowerCase();
             document.querySelectorAll('.channel-item').forEach(el => {
-                el.style.display = el.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
+                const text = el.querySelector('.channel-name').innerText.toLowerCase();
+                el.style.display = text.includes(q) ? 'flex' : 'none';
             });
         }
 
