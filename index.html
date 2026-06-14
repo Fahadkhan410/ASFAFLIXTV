@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Live TV Portal Pro</title>
+    <title>Universal Live TV Portal</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js"></script>
     <style>
@@ -11,29 +11,38 @@
         body { font-family: 'Segoe UI', sans-serif; background-color: #121212; color: #ffffff; display: flex; height: 100vh; overflow: hidden; }
 
         /* Sidebar Styling */
-        #sidebar { width: 340px; background-color: #181818; border-right: 1px solid #333; display: flex; flex-direction: column; flex-shrink: 0; }
+        #sidebar { width: 340px; background-color: #181818; border-right: 1px solid #333; display: flex; flex-direction: column; transition: all 0.3s ease; }
         #sidebar-header { padding: 20px; background-color: #1e1e1e; border-bottom: 1px solid #333; }
-        #search-box { width: 100%; padding: 10px; background: #000; border: 1px solid #444; border-radius: 6px; color: #fff; margin-top: 10px; }
+        #search-box { width: 100%; padding: 10px; background: #000; border: 1px solid #444; border-radius: 6px; color: #fff; margin-top: 10px; font-size: 1rem; }
         
         .tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #121212; }
-        .tab-btn { padding: 12px 5px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.8rem; text-align: center; }
+        .tab-btn { padding: 14px 5px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.85rem; font-weight: 600; }
         .tab-btn.active { color: #0078d4; border-bottom: 2px solid #0078d4; background: #181818; }
 
-        #channel-list-container { flex: 1; overflow-y: auto; }
+        #channel-list-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .channel-list { list-style: none; display: none; }
         .channel-list.active { display: block; }
         
-        .channel-item { padding: 12px 16px; display: flex; align-items: center; cursor: pointer; border-bottom: 1px solid #222; }
+        .channel-item { padding: 14px 16px; display: flex; align-items: center; cursor: pointer; border-bottom: 1px solid #222; }
         .channel-item:hover { background: #252525; }
         .channel-item.active { background: #0078d4; }
         
-        .channel-logo { width: 36px; height: 36px; border-radius: 4px; margin-right: 15px; background: #000; object-fit: cover; }
+        .channel-logo { width: 40px; height: 40px; border-radius: 6px; margin-right: 15px; background: #000; object-fit: cover; }
         .channel-name { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* Player Container */
+        /* Video Player Layer */
         #player-container { flex: 1; display: flex; flex-direction: column; background: #000; justify-content: center; align-items: center; position: relative; }
-        video { width: 100%; max-width: 100%; max-height: 100vh; object-fit: contain; }
-        #stream-title { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.85); padding: 10px 20px; border-radius: 20px; border: 1px solid #444; z-index: 10; pointer-events: none; font-size: 0.9rem; font-weight: 500; }
+        video { width: 100%; max-height: 100vh; object-fit: contain; background: #000; }
+        #stream-title { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.85); padding: 8px 16px; border-radius: 20px; border: 1px solid #444; z-index: 10; font-size: 0.9rem; pointer-events: none; }
+
+        /* Mobile Adaptive Breakpoints */
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow: auto; }
+            #sidebar { width: 100%; height: 50vh; border-right: none; border-top: 1px solid #333; order: 2; }
+            #player-container { width: 100%; height: 50vh; order: 1; position: sticky; top: 0; z-index: 100; }
+            video { height: 100%; }
+            #stream-title { top: 10px; left: 10px; font-size: 0.8rem; padding: 6px 12px; }
+        }
     </style>
 </head>
 <body>
@@ -41,7 +50,7 @@
     <div id="sidebar">
         <div id="sidebar-header">
             <h2>Live Network</h2>
-            <input type="text" id="search-box" placeholder="Filter channels..." oninput="filterChannels()">
+            <input type="text" id="search-box" placeholder="Search channels..." oninput="filterChannels()">
         </div>
         
         <div class="tabs">
@@ -69,7 +78,7 @@
             tapmad: 'https://raw.githubusercontent.com/srhady/tapmad-bd/refs/heads/main/tapmad_bd.m3u',
             asfalive: 'https://raw.githubusercontent.com/Fahadkhan410/bdtest/refs/heads/main/cha.m3u',
             bdixtv: 'https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u',
-            mixtv: '' // Add custom playlist here if needed
+            mixtv: ''
         };
 
         let hlsEngine = null;
@@ -77,8 +86,7 @@
 
         function switchTab(id) {
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                const clickAttr = btn.getAttribute('onclick') || '';
-                btn.classList.toggle('active', clickAttr.includes(`'${id}'`));
+                btn.classList.toggle('active', btn.getAttribute('onclick').includes(`'${id}'`));
             });
             document.querySelectorAll('.channel-list').forEach(list => {
                 list.classList.toggle('active', list.id === `${id}-list`);
@@ -92,12 +100,11 @@
                     const res = await fetch(url);
                     const text = await res.text();
                     parseM3U(text, document.getElementById(`${key}-list`));
-                } catch(e) { console.error(`Error loading ${key} playlist:`, e); }
+                } catch(e) { console.error(`Failed to sync source engine for: ${key}`); }
             }
         }
 
         function parseM3U(data, container) {
-            if (!container) return;
             const lines = data.split('\n').map(line => line.trim());
             let html = '';
             
@@ -108,20 +115,20 @@
                     let url = '';
                     
                     for (let j = i + 1; j < lines.length; j++) {
-                        if (lines[j].startsWith('#EXTINF:')) break; 
+                        if (lines[j].startsWith('#EXTINF:')) break;
                         if (lines[j].startsWith('http')) { 
-                            url = lines[j]; 
+                            url = lines[j]; // Pulls exact url string, maintaining structural query tokens intact
                             break; 
                         }
                     }
                     
                     if (url) {
-                        // Protect parameters and tokens inside the onclick handler
-                        const safeUrl = encodeURI(url);
                         const safeName = name.replace(/'/g, "\\'");
+                        // Base64 encoding parameters safely maps token data configurations inside standard HTML strings
+                        const encodedUrl = btoa(unescape(encodeURIComponent(url)));
                         
                         html += `
-                        <li class="channel-item" onclick="playStream('${safeUrl}', '${safeName}', this)">
+                        <li class="channel-item" onclick="prepareStream('${encodedUrl}', '${safeName}', this)">
                             <img class="channel-logo" src="${logo}" onerror="this.style.display='none'">
                             <span class="channel-name">${name}</span>
                         </li>`;
@@ -131,78 +138,55 @@
             container.innerHTML = html;
         }
 
-        function destroyEngines() {
-            if (hlsEngine) {
-                hlsEngine.destroy();
-                hlsEngine = null;
-            }
-            if (dashEngine) {
-                dashEngine.reset();
-                dashEngine = null;
-            }
+        function prepareStream(encodedUrl, name, element) {
+            const url = decodeURIComponent(escape(atob(encodedUrl)));
+            play(url, name, element);
         }
 
-        function playStream(url, name, element) {
-            // UI updates
+        function play(url, name, element) {
             document.getElementById('stream-title').innerText = name;
             document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
-            if(element) element.classList.add('active');
+            element.classList.add('active');
 
             const video = document.getElementById('video');
-            destroyEngines();
             
-            // Clean URL parameters for format detection, but preserve token for actual playback
-            const cleanUrl = url.split('?')[0].toLowerCase();
+            // Teardown and reset current engine environments
+            if (hlsEngine) { hlsEngine.destroy(); hlsEngine = null; }
+            if (dashEngine) { dashEngine.reset(); dashEngine = null; }
+            video.src = "";
 
-            // 1. DASH Playback (.mpd)
-            if (cleanUrl.includes('.mpd')) {
+            const lowerUrl = url.toLowerCase();
+
+            // 1. MPEG-DASH Engine (.mpd structures)
+            if (lowerUrl.includes('.mpd')) {
                 dashEngine = dashjs.MediaPlayer().create();
                 dashEngine.initialize(video, url, true);
-                dashEngine.on(dashjs.MediaPlayer.events.ERROR, function(e) {
-                    console.error("DASH Engine Error:", e);
-                });
             } 
-            // 2. HLS Playback (.m3u8, including fragmented fmp4.m3u8 or tokenized urls)
-            else if (cleanUrl.includes('.m3u8')) {
+            // 2. HLS & fMP4 HLS Engine (.m3u8 structures)
+            else if (lowerUrl.includes('.m3u8')) {
                 if (Hls.isSupported()) {
                     hlsEngine = new Hls({
-                        maxMaxBufferLength: 15,
-                        enableWorker: true,
+                        progressive: true,
                         lowLatencyMode: true
                     });
                     hlsEngine.loadSource(url);
                     hlsEngine.attachMedia(video);
-                    hlsEngine.on(Hls.Events.MANIFEST_PARSED, function() {
-                        video.play().catch(err => console.log("Autoplay context blocked. Interaction required."));
-                    });
-                    hlsEngine.on(Hls.Events.ERROR, function (event, data) {
-                        if (data.fatal) {
-                            switch (data.type) {
-                                case Hls.ErrorTypes.NETWORK_ERROR:
-                                    console.log('Fatal network error encountered, trying to recover...');
-                                    hlsEngine.startLoad();
-                                    break;
-                                case Hls.ErrorTypes.MEDIA_ERROR:
-                                    console.log('Fatal media error encountered, trying to recover...');
-                                    hlsEngine.recoverMediaError();
-                                    break;
-                                default:
-                                    destroyEngines();
-                                    break;
-                            }
-                        }
-                    });
-                } 
-                // Native HLS fallback (Safari / iOS devices)
-                else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    hlsEngine.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Apple Native Core Fallback (Safari Mobile/iOS)
                     video.src = url;
-                    video.play().catch(err => console.log("Playback interaction deferred."));
+                    video.play().catch(() => {});
                 }
             } 
-            // 3. Fallback for Native Formats (Direct MP4, MKV, WebM, etc.)
+            // 3. Native File Formats (MP4, WebM, Direct Streams)
             else {
                 video.src = url;
-                video.play().catch(err => console.log("Direct video playback paused."));
+                video.play().catch(() => {});
+            }
+
+            // Mobile view adjustment auto-scrolls to viewport player once selected
+            if(window.innerWidth <= 768) {
+                document.getElementById('player-container').scrollIntoView({ behavior: 'smooth' });
             }
         }
 
@@ -214,7 +198,6 @@
             });
         }
 
-        // Initialize lists on load
         init();
     </script>
 </body>
