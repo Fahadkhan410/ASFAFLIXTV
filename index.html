@@ -48,11 +48,11 @@
     <div id="sidebar">
         <div id="sidebar-header">
             <h2>Live Network</h2>
-            <input type="text" id="search-box" placeholder="Filter channels..." oninput="filterChannels()">
+            <input type="text" id="search-box" placeholder="Filter channels..." oninput="filterChannels(false)">
             
             <div id="group-container">
                 <label for="group-select">Category / Group</label>
-                <select id="group-select" onchange="filterChannels()">
+                <select id="group-select" onchange="filterChannels(true)">
                     <option value="all">All Categories</option>
                 </select>
             </div>
@@ -90,7 +90,7 @@
         };
 
         let player = null;
-        let MasterGroupSet = new Set(); // Global store of loaded categories
+        let MasterGroupSet = new Set(); 
 
         document.addEventListener("DOMContentLoaded", () => {
             player = videojs('video-player', {
@@ -107,7 +107,7 @@
                 btn.classList.toggle('active', btn.innerText.toLowerCase() === targetText);
             });
             document.querySelectorAll('.channel-list').forEach(list => list.classList.toggle('active', list.id === `${id}-list`));
-            filterChannels();
+            filterChannels(false);
         }
 
         async function init() {
@@ -117,37 +117,51 @@
                     const res = await fetch(url);
                     const text = await res.text();
                     parseM3U(text, document.getElementById(`${key}-list`));
-                } catch(e) { console.error(`Error loading ${key}`); }
+                } catch(e) { console.error(`Error loading ${key}`, e); }
             }
             updateGroupDropdown();
+            filterChannels(false);
         }
 
         function parseM3U(data, container) {
-            const lines = data.split('\n');
+            if (!container) return;
+            const lines = data.split(/\r?\n/);
             let html = '';
+            
             for (let i = 0; i < lines.length; i++) {
-                if (lines[i].startsWith('#EXTINF:')) {
-                    const name = lines[i].split(',')[1]?.trim() || 'Unknown';
-                    const logo = (lines[i].match(/tvg-logo="([^"]+)"/) || [])[1] || '';
-                    const group = (lines[i].match(/group-title="([^"]+)"/) || [])[1] || 'Uncategorized';
+                const line = lines[i].trim();
+                if (line.startsWith('#EXTINF:')) {
+                    const commaIndex = line.lastIndexOf(',');
+                    let name = commaIndex !== -1 ? line.substring(commaIndex + 1).trim() : 'Unknown Channel';
                     
-                    MasterGroupSet.add(group); 
+                    const infoSegment = line.substring(0, commaIndex !== -1 ? commaIndex : line.length);
+                    const logoMatch = infoSegment.match(/tvg-logo="([^"]+)"/i);
+                    const logo = logoMatch ? logoMatch[1] : '';
+                    
+                    const groupMatch = infoSegment.match(/group-title="([^"]+)"/i);
+                    const group = groupMatch ? groupMatch[1].trim() : 'Uncategorized';
+                    
+                    if (group) MasterGroupSet.add(group); 
                     
                     let url = '';
                     for (let j = i + 1; j < lines.length; j++) {
-                        if (lines[j].trim().startsWith('http')) { 
-                            url = lines[j].trim(); 
-                            break; 
+                        const nextLine = lines[j].trim();
+                        if (nextLine === '') continue;
+                        if (nextLine.startsWith('#')) break; 
+                        if (nextLine.toLowerCase().startsWith('http')) {
+                            url = nextLine;
+                            i = j; 
+                            break;
                         }
                     }
+                    
                     if (url) {
-                        // Quotes and apostrophes are cleanly encoded to protect data-attributes
                         const escapedGroup = group.replace(/"/g, '&quot;');
-                        const escapedName = name.replace(/'/g, "\\'");
+                        const escapedName = name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                         
                         html += `
                         <li class="channel-item" data-group="${escapedGroup}" onclick="play('${url}', '${escapedName}', this)">
-                            <img class="channel-logo" src="${logo}" onerror="this.style.display='none'">
+                            ${logo ? `<img class="channel-logo" src="${logo}" onerror="this.style.display='none'">` : ''}
                             <span class="channel-name">${name}</span>
                         </li>`;
                     }
@@ -158,8 +172,9 @@
 
         function updateGroupDropdown() {
             const selectEl = document.getElementById('group-select');
-            const sortedGroups = Array.from(MasterGroupSet).sort();
+            selectEl.innerHTML = '<option value="all">All Categories</option>';
             
+            const sortedGroups = Array.from(MasterGroupSet).sort();
             sortedGroups.forEach(groupName => {
                 const opt = document.createElement('option');
                 opt.value = groupName;
@@ -173,12 +188,11 @@
             document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
 
-            let type = 'video/mp4';
+            let type = 'application/x-mpegURL'; 
             const testUrl = url.toLowerCase().split('?')[0];
             if (testUrl.includes('.m3u8')) type = 'application/x-mpegURL';
             else if (testUrl.includes('.mpd')) type = 'application/dash+xml';
-            else if (testUrl.includes('.webm')) type = 'video/webm';
-            else if (testUrl.includes('.ogg') || testUrl.includes('.ogv')) type = 'video/ogg';
+            else if (testUrl.includes('.mp4')) type = 'video/mp4';
 
             if (player) {
                 player.src({ src: url, type: type });
@@ -188,12 +202,17 @@
             }
         }
 
-        // Handles filtering live content based on current selected tab and selected category group
-        function filterChannels() {
+        // Handles conditional updates across all streaming lists
+        function filterChannels(isCategoryChange = false) {
             const searchInput = document.getElementById('search-box').value.toLowerCase();
             const chosenGroup = document.getElementById('group-select').value;
             
+            let tabsWithMatches = new Set();
+            let currentActiveTabId = document.querySelector('.channel-list.active')?.id;
+
+            // Step 1: Run filter logic over every channel list item
             document.querySelectorAll('.channel-list').forEach(list => {
+                const listId = list.id;
                 const isTabActive = list.classList.contains('active');
                 const items = list.querySelectorAll('.channel-item');
                 
@@ -202,23 +221,48 @@
                     const matchesSearch = el.querySelector('.channel-name').innerText.toLowerCase().includes(searchInput);
                     const matchesGroup = (chosenGroup === 'all' || elGroup === chosenGroup);
                     
+                    let shouldShow = false;
+
                     if (searchInput === '') {
-                        // Default Mode: Channels must exist within the active navigation tab AND match category choice
-                        if (isTabActive && matchesGroup) {
-                            el.style.display = 'flex';
-                        } else {
-                            el.style.display = 'none';
+                        // Category Only Mode: Identify availability across all provider lists
+                        if (matchesGroup) {
+                            shouldShow = true;
+                            tabsWithMatches.add(listId);
                         }
                     } else {
-                        // Override Search Mode: Reveal matching components across tabs if category restriction allows it
+                        // Combo mode (Search String + Category selection)
                         if (matchesSearch && matchesGroup) {
-                            el.style.display = 'flex';
-                        } else {
-                            el.style.display = 'none';
+                            shouldShow = true;
+                            tabsWithMatches.add(listId);
                         }
+                    }
+
+                    // Apply visual visibility rules based on active active tab container constraints
+                    if (shouldShow && (searchInput !== '' || isTabActive)) {
+                        el.style.display = 'flex';
+                    } else {
+                        el.style.display = 'none';
                     }
                 });
             });
+
+            // Step 2: Auto-focus tab switch behavior on category changes
+            if (isCategoryChange && tabsWithMatches.size > 0 && !tabsWithMatches.has(currentActiveTabId)) {
+                // Instantly pivot viewport to target first list matching requirements
+                const firstMatchingListId = Array.from(tabsWithMatches)[0];
+                const cleanTabName = firstMatchingListId.replace('-list', '');
+                switchTab(cleanTabName);
+            } else if (searchInput === '') {
+                // Clean up step: Ensure display types fix correctly on standard tab views
+                document.querySelectorAll('.channel-list').forEach(list => {
+                    const isTabActive = list.classList.contains('active');
+                    list.querySelectorAll('.channel-item').forEach(el => {
+                        const elGroup = el.getAttribute('data-group');
+                        const matchesGroup = (chosenGroup === 'all' || elGroup === chosenGroup);
+                        el.style.display = (isTabActive && matchesGroup) ? 'flex' : 'none';
+                    });
+                });
+            }
         }
     </script>
 </body>
