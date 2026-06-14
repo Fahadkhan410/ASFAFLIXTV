@@ -90,7 +90,7 @@
         };
 
         let player = null;
-        let MasterGroupSet = new Set(); // Global uniqueness tracker for our dropdown
+        let MasterGroupSet = new Set(); // Global store of loaded categories
 
         document.addEventListener("DOMContentLoaded", () => {
             player = videojs('video-player', {
@@ -141,6 +141,7 @@
                         }
                     }
                     if (url) {
+                        // Quotes and apostrophes are cleanly encoded to protect data-attributes
                         const escapedGroup = group.replace(/"/g, '&quot;');
                         const escapedName = name.replace(/'/g, "\\'");
                         
@@ -187,7 +188,7 @@
             }
         }
 
-        // Core filter mechanism syncing the channel item lists with your HTML UI
+        // Handles filtering live content based on current selected tab and selected category group
         function filterChannels() {
             const searchInput = document.getElementById('search-box').value.toLowerCase();
             const chosenGroup = document.getElementById('group-select').value;
@@ -202,14 +203,14 @@
                     const matchesGroup = (chosenGroup === 'all' || elGroup === chosenGroup);
                     
                     if (searchInput === '') {
-                        // Regular Behavior: Filter content targeting ONLY the currently opened active playlist category
+                        // Default Mode: Channels must exist within the active navigation tab AND match category choice
                         if (isTabActive && matchesGroup) {
                             el.style.display = 'flex';
                         } else {
                             el.style.display = 'none';
                         }
                     } else {
-                        // Global Search Behavior: Show matches matching group rules across all panels
+                        // Override Search Mode: Reveal matching components across tabs if category restriction allows it
                         if (matchesSearch && matchesGroup) {
                             el.style.display = 'flex';
                         } else {
