@@ -75,6 +75,9 @@
         function switchTab(id) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.innerText.toLowerCase() === id));
             document.querySelectorAll('.channel-list').forEach(list => list.classList.toggle('active', list.id === `${id}-list`));
+            
+            // Re-apply filters specifically for the newly chosen active tab
+            filterChannels();
         }
 
         async function init() {
@@ -118,22 +121,19 @@
 
             const video = document.getElementById('video');
             
-            // Cleanup existing HLS instance
             if (hls) { hls.destroy(); hls = null; }
 
-            // Handle HLS vs Standard Video Formats
             if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
                     hls = new Hls();
                     hls.loadSource(url);
                     hls.attachMedia(video);
-                    video.play();
+                    hls.play();
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                     video.src = url;
                     video.play();
                 }
             } else {
-                // Fallback for MP4 or other native formats
                 video.src = url;
                 video.play();
             }
@@ -141,8 +141,22 @@
 
         function filterChannels() {
             const q = document.getElementById('search-box').value.toLowerCase();
-            document.querySelectorAll('.channel-item').forEach(el => {
-                el.style.display = el.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
+            
+            document.querySelectorAll('.channel-list').forEach(list => {
+                const isTabActive = list.classList.contains('active');
+                const items = list.querySelectorAll('.channel-item');
+                
+                items.forEach(el => {
+                    const matchesSearch = el.innerText.toLowerCase().includes(q);
+                    
+                    if (q === '') {
+                        // If search field is empty, show everything in the active tab, hide everything in background tabs
+                        el.style.display = isTabActive ? 'flex' : 'none';
+                    } else {
+                        // If searching, let global search take over matching items across playlists
+                        el.style.display = matchesSearch ? 'flex' : 'none';
+                    }
+                });
             });
         }
 
