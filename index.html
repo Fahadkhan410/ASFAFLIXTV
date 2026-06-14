@@ -4,35 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Universal Live TV Portal</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <!-- Video.js Player Stylesheets and Core Components -->
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #121212; color: #ffffff; display: flex; height: 100vh; overflow: hidden; }
 
-        /* Sidebar Styling */
+        /* Sidebar Layout and Design */
         #sidebar { width: 340px; background-color: #181818; border-right: 1px solid #333; display: flex; flex-direction: column; }
         #sidebar-header { padding: 20px; background-color: #1e1e1e; border-bottom: 1px solid #333; }
-        #search-box { width: 100%; padding: 10px; background: #000; border: 1px solid #444; border-radius: 6px; color: #fff; margin-top: 10px; }
+        #search-box { width: 100%; padding: 10px; background: #000; border: 1px solid #444; border-radius: 6px; color: #fff; margin-top: 10px; outline: none; }
+        #search-box:focus { border-color: #0078d4; }
         
         .tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #121212; }
-        .tab-btn { padding: 12px 5px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.8rem; }
+        .tab-btn { padding: 12px 5px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; transition: all 0.2s ease; }
         .tab-btn.active { color: #0078d4; border-bottom: 2px solid #0078d4; background: #181818; }
 
         #channel-list-container { flex: 1; overflow-y: auto; }
         .channel-list { list-style: none; display: none; }
         .channel-list.active { display: block; }
         
-        .channel-item { padding: 12px 16px; display: flex; align-items: center; cursor: pointer; border-bottom: 1px solid #222; }
+        .channel-item { padding: 12px 16px; display: flex; align-items: center; cursor: pointer; border-bottom: 1px solid #222; transition: background 0.2s ease; }
         .channel-item:hover { background: #252525; }
         .channel-item.active { background: #0078d4; }
         
         .channel-logo { width: 36px; height: 36px; border-radius: 4px; margin-right: 15px; background: #000; object-fit: cover; }
         .channel-name { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* Player Container Styling */
+        /* Video Workspace Panels */
         #player-container { flex: 1; display: flex; flex-direction: column; background: #000; justify-content: center; align-items: center; position: relative; }
-        video { width: 100%; max-height: 100vh; background-color: #000; }
-        #stream-title { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; border: 1px solid #444; z-index: 10; pointer-events: none; }
+        
+        /* Enforce Video.js container properties to fill viewport cleanly */
+        .video-js { width: 100% !important; height: 100% !important; max-height: 100vh; }
+        
+        #stream-title { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.85); padding: 10px 20px; border-radius: 20px; border: 1px solid #444; z-index: 10; font-weight: bold; font-size: 0.9rem; pointer-events: none; letter-spacing: 0.5px; }
     </style>
 </head>
 <body>
@@ -60,50 +67,62 @@
 
     <div id="player-container">
         <div id="stream-title">Select a channel</div>
-        <video id="video" controls autoplay playsinline></video>
+        <!-- Set up Video.js base HTML structure -->
+        <video id="video-player" class="video-js vjs-default-skin vjs-big-play-centered" controls autoplay playsinline preload="auto"></video>
     </div>
 
+    <!-- VideoJS Engine Imports -->
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+
     <script>
-        // Centralized Proxy URL configuration
+        // Central Cloudflare Proxy Config
         const PROXY_BASE = 'https://asfaflix.arifmeghla410.workers.dev/?url=';
 
-        // Storing clean, raw source paths 
         const PLAYLISTS = {
             tapmad: 'https://raw.githubusercontent.com/srhady/tapmad-bd/refs/heads/main/tapmad_bd.m3u',
             asfalive: 'https://raw.githubusercontent.com/Fahadkhan410/bdtest/refs/heads/main/cha.m3u',
             bdixtv: 'https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u',
-            mixtv: '' // You can add an M3U link here later if needed
+            mixtv: ''
         };
 
-        let hls = null;
+        let player = null;
+
+        // Initialize Player Environment on document load
+        document.addEventListener('DOMContentLoaded', () => {
+            player = videojs('video-player', {
+                fluid: false,
+                responsive: true,
+                playbackRates: [0.5, 1, 1.5, 2]
+            });
+            init();
+        });
 
         function switchTab(id) {
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('onclick').includes(`'${id}'`));
+                btn.classList.toggle('active', btn.innerText.toLowerCase() === id);
             });
             document.querySelectorAll('.channel-list').forEach(list => {
                 list.classList.toggle('active', list.id === `${id}-list`);
             });
+            // Clear filtering input when shifting tabs
+            document.getElementById('search-box').value = '';
+            filterChannels();
         }
 
-        // Initialize and fetch lists
         async function init() {
             for (const [key, url] of Object.entries(PLAYLISTS)) {
-                if (!url) continue;
+                if(!url) continue;
                 try {
-                    // Route the text playlist fetching through the proxy to bypass CORS restrictions
-                    const proxiedPlaylistUrl = PROXY_BASE + encodeURIComponent(url);
-                    const res = await fetch(proxiedPlaylistUrl);
-                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                    // Pull and bypass standard CORS settings on the list text source using your endpoint
+                    const res = await fetch(PROXY_BASE + encodeURIComponent(url));
                     const text = await res.text();
                     parseM3U(text, document.getElementById(`${key}-list`));
                 } catch(e) { 
-                    console.error(`Error loading or parsing playlist: ${key}`, e); 
+                    console.error(`Failed to gather resource arrays for path target: ${key}`, e); 
                 }
             }
         }
 
-        // Parse M3U standard structured string format
         function parseM3U(data, container) {
             const lines = data.split('\n');
             let html = '';
@@ -113,7 +132,6 @@
                     const logo = (lines[i].match(/tvg-logo="([^"]+)"/) || [])[1] || '';
                     let url = '';
                     
-                    // Look ahead for the channel stream URL
                     for (let j = i + 1; j < lines.length; j++) {
                         if (lines[j].trim().startsWith('http')) { 
                             url = lines[j].trim(); 
@@ -122,13 +140,9 @@
                     }
                     
                     if (url) {
-                        // Escaping single quotes in channel names to avoid JavaScript injection/syntax breakages
-                        const safeName = name.replace(/'/g, "\\'");
-                        const encodedStreamUrl = encodeURIComponent(url);
-
                         html += `
-                        <li class="channel-item" onclick="play('${encodedStreamUrl}', '${safeName}', this)">
-                            <img class="channel-logo" src="${logo}" onerror="this.style.display='none'">
+                        <li class="channel-item" onclick="prepareStream('${encodeURIComponent(url)}', '${name.replace(/'/g, "\\'")}', this)">
+                            <img class="channel-logo" src="${logo}" onerror="this.src='https://via.placeholder.com/36/000000/FFFFFF?text=TV'">
                             <span class="channel-name">${name}</span>
                         </li>`;
                     }
@@ -137,55 +151,49 @@
             container.innerHTML = html;
         }
 
-        // Handle active stream routing configuration inside the video tag
-        function play(encodedUrl, name, element) {
+        function prepareStream(encodedUrl, name, element) {
             const rawUrl = decodeURIComponent(encodedUrl);
-            
-            // Re-route the individual channel video stream through the proxy pipeline
-            const proxiedStreamUrl = PROXY_BASE + encodeURIComponent(rawUrl);
+            const proxiedUrl = PROXY_BASE + encodeURIComponent(rawUrl);
 
+            // Interface Updates
             document.getElementById('stream-title').innerText = name;
             document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
 
-            const video = document.getElementById('video');
+            // Set content stream type configurations for Video.js pipeline engine
+            let streamType = 'application/x-mpegURL'; // Fallback / default option for HLS (.m3u8)
             
-            // Safely teardown previous HLS engine attachments 
-            if (hls) { 
-                hls.destroy(); 
-                hls = null; 
+            if (rawUrl.toLowerCase().includes('.mp4')) {
+                streamType = 'video/mp4';
+            } else if (rawUrl.toLowerCase().includes('.mpd')) {
+                streamType = 'application/dash+xml';
             }
 
-            // HLS (.m3u8 format optimization engine tracking)
-            if (rawUrl.includes('.m3u8') || rawUrl.includes('.m3u')) {
-                if (Hls.isSupported()) {
-                    hls = new Hls();
-                    hls.loadSource(proxiedStreamUrl);
-                    hls.attachMedia(video);
-                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                        video.play().catch(e => console.log("Playback engine paused/prevented auto-start:", e));
+            // Route safe content addresses directly into VideoJS Player runtime engine
+            if (player) {
+                player.src({
+                    src: proxiedUrl,
+                    type: streamType
+                });
+                player.ready(() => {
+                    player.play().catch(error => {
+                        console.log("Autoplay blocked or stream connection failed:", error);
                     });
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    // Default fallback targeting safari native playback engine setups
-                    video.src = proxiedStreamUrl;
-                    video.play().catch(e => console.log("Native playback paused/prevented auto-start:", e));
-                }
-            } else {
-                // Fallback architecture target maps (.mp4, direct video pipelines, etc.)
-                video.src = proxiedStreamUrl;
-                video.play().catch(e => console.log("Fallback playback paused/prevented auto-start:", e));
+                });
             }
         }
 
         function filterChannels() {
-            const q = document.getElementById('search-box').value.toLowerCase();
-            document.querySelectorAll('.channel-item').forEach(el => {
-                el.style.display = el.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
+            const query = document.getElementById('search-box').value.toLowerCase();
+            // Restrict updates exclusively inside active display panels to preserve performance scaling
+            const activeList = document.querySelector('.channel-list.active');
+            if (!activeList) return;
+
+            activeList.querySelectorAll('.channel-item').forEach(el => {
+                const nameText = el.querySelector('.channel-name').innerText.toLowerCase();
+                el.style.display = nameText.includes(query) ? 'flex' : 'none';
             });
         }
-
-        // Run the system configuration 
-        init();
     </script>
 </body>
 </html>
