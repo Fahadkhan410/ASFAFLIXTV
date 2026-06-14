@@ -7,40 +7,39 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background-color: #121212; color: #ffffff; display: flex; height: 100vh; overflow: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #121212; color: #ffffff; display: flex; height: 100vh; overflow: hidden; }
 
         /* Sidebar Styling */
-        #sidebar { width: 340px; background-color: #181818; border-right: 1px solid #333; display: flex; flex-direction: column; z-index: 5; }
+        #sidebar { width: 340px; background-color: #181818; border-right: 1px solid #333; display: flex; flex-direction: column; }
         #sidebar-header { padding: 20px; background-color: #1e1e1e; border-bottom: 1px solid #333; }
-        #search-box { width: 100%; padding: 10px; background: #000; border: 1px solid #444; border-radius: 6px; color: #fff; margin-top: 10px; outline: none; }
-        #search-box:focus { border-color: #0078d4; }
+        #search-box { width: 100%; padding: 10px; background: #000; border: 1px solid #444; border-radius: 6px; color: #fff; margin-top: 10px; }
         
         .tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #121212; }
-        .tab-btn { padding: 12px 5px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; transition: all 0.2s ease; }
+        .tab-btn { padding: 12px 5px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.8rem; }
         .tab-btn.active { color: #0078d4; border-bottom: 2px solid #0078d4; background: #181818; }
 
-        #channel-list-container { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #333 transparent; }
+        #channel-list-container { flex: 1; overflow-y: auto; }
         .channel-list { list-style: none; display: none; }
         .channel-list.active { display: block; }
         
-        .channel-item { padding: 12px 16px; display: flex; align-items: center; cursor: pointer; border-bottom: 1px solid #222; transition: background 0.2s ease; }
+        .channel-item { padding: 12px 16px; display: flex; align-items: center; cursor: pointer; border-bottom: 1px solid #222; }
         .channel-item:hover { background: #252525; }
         .channel-item.active { background: #0078d4; }
         
-        .channel-logo { width: 36px; height: 36px; border-radius: 4px; margin-right: 15px; background: #222; object-fit: contain; }
-        .channel-name { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+        .channel-logo { width: 36px; height: 36px; border-radius: 4px; margin-right: 15px; background: #000; object-fit: cover; }
+        .channel-name { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* Player Container */
+        /* Player Container Styling */
         #player-container { flex: 1; display: flex; flex-direction: column; background: #000; justify-content: center; align-items: center; position: relative; }
-        video { width: 100%; height: 100%; max-height: 100vh; object-fit: contain; }
-        #stream-title { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 20px; border: 1px solid #444; z-index: 10; backdrop-filter: blur(5px); font-size: 0.9rem; pointer-events: none; }
+        video { width: 100%; max-height: 100vh; background-color: #000; }
+        #stream-title { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; border: 1px solid #444; z-index: 10; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
         <div id="sidebar-header">
-            <h2 style="font-size: 1.4rem; font-weight: 600;">Live Network</h2>
+            <h2>Live Network</h2>
             <input type="text" id="search-box" placeholder="Filter channels..." oninput="filterChannels()">
         </div>
         
@@ -65,137 +64,128 @@
     </div>
 
     <script>
-        // Updated with your new BDIX worker M3U URL
+        // Centralized Proxy URL configuration
+        const PROXY_BASE = 'https://asfaflix.arifmeghla410.workers.dev/?url=';
+
+        // Storing clean, raw source paths 
         const PLAYLISTS = {
             tapmad: 'https://raw.githubusercontent.com/srhady/tapmad-bd/refs/heads/main/tapmad_bd.m3u',
             asfalive: 'https://raw.githubusercontent.com/Fahadkhan410/bdtest/refs/heads/main/cha.m3u',
-            bdixtv: 'https://asfaflix.arifmeghla410.workers.dev/?url=https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u',
-            mixtv: ''
+            bdixtv: 'https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u',
+            mixtv: '' // You can add an M3U link here later if needed
         };
 
         let hls = null;
 
         function switchTab(id) {
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.innerText.toLowerCase() === id || (id === 'tapmad' && btn.innerText === 'TAPMAD'));
+                btn.classList.toggle('active', btn.getAttribute('onclick').includes(`'${id}'`));
             });
             document.querySelectorAll('.channel-list').forEach(list => {
                 list.classList.toggle('active', list.id === `${id}-list`);
             });
-            document.getElementById('search-box').value = '';
-            filterChannels();
         }
 
+        // Initialize and fetch lists
         async function init() {
             for (const [key, url] of Object.entries(PLAYLISTS)) {
-                if(!url) continue;
+                if (!url) continue;
                 try {
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error('Network error');
+                    // Route the text playlist fetching through the proxy to bypass CORS restrictions
+                    const proxiedPlaylistUrl = PROXY_BASE + encodeURIComponent(url);
+                    const res = await fetch(proxiedPlaylistUrl);
+                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                     const text = await res.text();
                     parseM3U(text, document.getElementById(`${key}-list`));
                 } catch(e) { 
-                    console.error(`Error loading playlist [${key}]:`, e); 
-                    document.getElementById(`${key}-list`).innerHTML = `<li class="channel-item" style="color:#ff4444; pointer-events:none;">Failed to load playlist.</li>`;
+                    console.error(`Error loading or parsing playlist: ${key}`, e); 
                 }
             }
         }
 
+        // Parse M3U standard structured string format
         function parseM3U(data, container) {
             const lines = data.split('\n');
             let html = '';
-            
             for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (line.startsWith('#EXTINF:')) {
-                    const name = line.split(',')[1]?.trim() || 'Unknown Channel';
-                    const logoMatch = line.match(/tvg-logo="([^"]+)"/);
-                    const logo = logoMatch ? logoMatch[1] : '';
-                    
+                if (lines[i].startsWith('#EXTINF:')) {
+                    const name = lines[i].split(',')[1]?.trim() || 'Unknown';
+                    const logo = (lines[i].match(/tvg-logo="([^"]+)"/) || [])[1] || '';
                     let url = '';
+                    
+                    // Look ahead for the channel stream URL
                     for (let j = i + 1; j < lines.length; j++) {
-                        const nextLine = lines[j].trim();
-                        if (nextLine.startsWith('#')) continue;
-                        if (nextLine.startsWith('http')) { 
-                            url = nextLine; 
+                        if (lines[j].trim().startsWith('http')) { 
+                            url = lines[j].trim(); 
                             break; 
                         }
                     }
                     
                     if (url) {
+                        // Escaping single quotes in channel names to avoid JavaScript injection/syntax breakages
+                        const safeName = name.replace(/'/g, "\\'");
+                        const encodedStreamUrl = encodeURIComponent(url);
+
                         html += `
-                        <li class="channel-item" onclick="play('${url}', '${name.replace(/'/g, "\\'")}', this)">
-                            ${logo ? `<img class="channel-logo" src="${logo}" alt="" onerror="this.remove()">` : ''}
+                        <li class="channel-item" onclick="play('${encodedStreamUrl}', '${safeName}', this)">
+                            <img class="channel-logo" src="${logo}" onerror="this.style.display='none'">
                             <span class="channel-name">${name}</span>
                         </li>`;
                     }
                 }
             }
-            container.innerHTML = html || `<li class="channel-item" style="color:#888; pointer-events:none;">No channels available</li>`;
+            container.innerHTML = html;
         }
 
-        function play(url, name, element) {
-            const video = document.getElementById('video');
-            document.getElementById('stream-title').innerText = name;
+        // Handle active stream routing configuration inside the video tag
+        function play(encodedUrl, name, element) {
+            const rawUrl = decodeURIComponent(encodedUrl);
             
+            // Re-route the individual channel video stream through the proxy pipeline
+            const proxiedStreamUrl = PROXY_BASE + encodeURIComponent(rawUrl);
+
+            document.getElementById('stream-title').innerText = name;
             document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
+
+            const video = document.getElementById('video');
             
+            // Safely teardown previous HLS engine attachments 
             if (hls) { 
                 hls.destroy(); 
                 hls = null; 
             }
 
-            if (url.includes('.m3u8') || url.includes('manifest')) {
+            // HLS (.m3u8 format optimization engine tracking)
+            if (rawUrl.includes('.m3u8') || rawUrl.includes('.m3u')) {
                 if (Hls.isSupported()) {
-                    hls = new Hls({
-                        maxMaxBufferLength: 10,
-                        enableWorker: true
-                    });
-                    hls.loadSource(url);
+                    hls = new Hls();
+                    hls.loadSource(proxiedStreamUrl);
                     hls.attachMedia(video);
-                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                        video.play().catch(err => console.log("Autoplay blocked or stream interrupted: ", err));
-                    });
-                    hls.on(Hls.Events.ERROR, function (event, data) {
-                        if (data.fatal) {
-                            switch (data.type) {
-                                case Hls.ErrorTypes.NETWORK_ERROR:
-                                    hls.startLoad();
-                                    break;
-                                case Hls.ErrorTypes.MEDIA_ERROR:
-                                    hls.recoverMediaError();
-                                    break;
-                                default:
-                                    hls.destroy();
-                                    break;
-                            }
-                        }
+                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                        video.play().catch(e => console.log("Playback engine paused/prevented auto-start:", e));
                     });
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    video.src = url;
-                    video.addEventListener('loadedmetadata', () => {
-                        video.play().catch(err => console.log("Native playback error: ", err));
-                    });
+                    // Default fallback targeting safari native playback engine setups
+                    video.src = proxiedStreamUrl;
+                    video.play().catch(e => console.log("Native playback paused/prevented auto-start:", e));
                 }
             } else {
-                video.src = url;
-                video.play().catch(err => console.log("Playback error: ", err));
+                // Fallback architecture target maps (.mp4, direct video pipelines, etc.)
+                video.src = proxiedStreamUrl;
+                video.play().catch(e => console.log("Fallback playback paused/prevented auto-start:", e));
             }
         }
 
         function filterChannels() {
-            const query = document.getElementById('search-box').value.toLowerCase().trim();
-            const activeList = document.querySelector('.channel-list.active');
-            if(!activeList) return;
-
-            activeList.querySelectorAll('.channel-item').forEach(el => {
-                const text = el.querySelector('.channel-name')?.innerText.toLowerCase() || '';
-                el.style.display = text.includes(query) ? 'flex' : 'none';
+            const q = document.getElementById('search-box').value.toLowerCase();
+            document.querySelectorAll('.channel-item').forEach(el => {
+                el.style.display = el.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
             });
         }
 
-        document.addEventListener('DOMContentLoaded', init);
+        // Run the system configuration 
+        init();
     </script>
 </body>
 </html>
