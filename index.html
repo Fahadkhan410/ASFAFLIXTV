@@ -96,7 +96,15 @@
             player = videojs('video-player', {
                 fluid: false,
                 responsive: true,
-                liveui: true
+                liveui: true,
+                html5: {
+                    vhs: {
+                        overrideNative: true
+                    },
+                    nativeVideoTracks: false,
+                    nativeAudioTracks: false,
+                    nativeTextTracks: false
+                }
             });
             init();
         });
@@ -189,11 +197,20 @@
             document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
 
+            // Default to HLS stream type for extensionless IPTV tokens/paths
             let type = 'application/x-mpegURL'; 
             const testUrl = url.toLowerCase().split('?')[0];
-            if (testUrl.includes('.m3u8')) type = 'application/x-mpegURL';
-            else if (testUrl.includes('.mpd')) type = 'application/dash+xml';
-            else if (testUrl.includes('.mp4')) type = 'video/mp4';
+            
+            if (testUrl.includes('.m3u8')) {
+                type = 'application/x-mpegURL';
+            } else if (testUrl.includes('.mpd')) {
+                type = 'application/dash+xml';
+            } else if (testUrl.includes('.mp4')) {
+                type = 'video/mp4';
+            } else {
+                // Extensionless fallback handling for custom route streams (e.g., /iptv/LL3FDFFCM2P2BM)
+                type = 'application/x-mpegURL';
+            }
 
             if (player) {
                 player.src({ src: url, type: type });
@@ -211,7 +228,6 @@
             let currentActiveList = document.querySelector('.channel-list.active');
             let currentActiveTabId = currentActiveList ? currentActiveList.id : '';
 
-            // Filter everything across all playlists
             document.querySelectorAll('.channel-list').forEach(list => {
                 const listId = list.id;
                 const items = list.querySelectorAll('.channel-item');
@@ -225,18 +241,13 @@
                     
                     if (matchesSearch && matchesGroup) {
                         tabsWithMatches.add(listId);
-                        if (list.classList.contains('active')) {
-                            el.style.display = 'flex';
-                        } else {
-                            el.style.display = 'none';
-                        }
+                        el.style.display = 'flex';
                     } else {
                         el.style.display = 'none';
                     }
                 });
             });
 
-            // Switch to tab automatically if selected category doesn't have matches in current viewport
             if (isCategoryChange && tabsWithMatches.size > 0 && !tabsWithMatches.has(currentActiveTabId)) {
                 const firstMatchingListId = Array.from(tabsWithMatches)[0];
                 const cleanTabName = firstMatchingListId.replace('-list', '');
