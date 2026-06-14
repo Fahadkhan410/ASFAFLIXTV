@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Universal Live TV Portal</title>
-    <!-- Video.js Styles -->
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,28 +15,19 @@
         #search-box { width: 100%; padding: 10px; background: #000; border: 1px solid #444; border-radius: 6px; color: #fff; margin-top: 10px; }
         
         .tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #121212; }
-        .tab-btn { padding: 12px 5px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.8rem; text-transform: uppercase; }
+        .tab-btn { padding: 12px 5px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.8rem; }
         .tab-btn.active { color: #0078d4; border-bottom: 2px solid #0078d4; background: #181818; }
 
         #channel-list-container { flex: 1; overflow-y: auto; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        /* Group / Category Accordion Styling */
+        .channel-list { list-style: none; display: none; }
+        .channel-list.active { display: block; }
+        
+        /* Accordion / Group Layout */
         .channel-group { border-bottom: 1px solid #222; }
-        .group-header { 
-            background: #202020; padding: 10px 16px; font-size: 0.85rem; font-weight: bold; 
-            color: #aaa; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
-            user-select: none;
-        }
-        .group-header:hover { background: #282828; color: #fff; }
-        .group-header::after { content: '▼'; font-size: 0.7rem; transition: transform 0.2s; }
-        .channel-group.collapsed .group-header::after { transform: rotate(-90deg); }
-        
-        .channel-list { list-style: none; display: block; }
-        .channel-group.collapsed .channel-list { display: none; }
-        
-        /* Channel Item Styling */
+        .group-title { padding: 12px 16px; font-weight: 600; font-size: 0.9rem; background: #202020; color: #ccc; cursor: pointer; user-select: none; outline: none; }
+        .group-title:hover { background: #282828; color: #fff; }
+        .group-content { list-style: none; padding-left: 0; }
+
         .channel-item { padding: 12px 16px; display: flex; align-items: center; cursor: pointer; border-bottom: 1px solid #1a1a1a; background: #181818; }
         .channel-item:hover { background: #252525; }
         .channel-item.active { background: #0078d4; }
@@ -57,7 +47,7 @@
     <div id="sidebar">
         <div id="sidebar-header">
             <h2>Live Network</h2>
-            <input type="text" id="search-box" placeholder="Filter channels..." oninput="filterChannels()">
+            <input type="text" id="search-box" placeholder="Filter channels or categories..." oninput="filterChannels()">
         </div>
         
         <div class="tabs">
@@ -68,10 +58,10 @@
         </div>
 
         <div id="channel-list-container">
-            <div id="tapmad-container" class="tab-content active"></div>
-            <div id="asfalive-container" class="tab-content"></div>
-            <div id="bdixtv-container" class="tab-content"></div>
-            <div id="mixtv-container" class="tab-content"></div>
+            <div id="tapmad-list" class="channel-list active"></div>
+            <div id="asfalive-list" class="channel-list"></div>
+            <div id="bdixtv-list" class="channel-list"></div>
+            <div id="mixtv-list" class="channel-list"></div>
         </div>
     </div>
 
@@ -80,7 +70,6 @@
         <video id="video-player" class="video-js vjs-default-skin vjs-big-play-centered" controls autoplay preload="auto" playsinline></video>
     </div>
 
-    <!-- Video.js Ecosystem Library Scripts -->
     <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-dash/5.1.1/videojs-contrib-dash.min.js"></script>
 
@@ -105,7 +94,7 @@
 
         function switchTab(id) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.innerText.toLowerCase() === id));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.toggle('active', content.id === `${id}-container`));
+            document.querySelectorAll('.channel-list').forEach(list => list.classList.toggle('active', list.id === `${id}-list`));
             filterChannels();
         }
 
@@ -115,7 +104,7 @@
                 try {
                     const res = await fetch(url);
                     const text = await res.text();
-                    parseM3U(text, document.getElementById(`${key}-container`));
+                    parseM3U(text, document.getElementById(`${key}-list`));
                 } catch(e) { console.error(`Error loading ${key}`); }
             }
         }
@@ -126,18 +115,26 @@
 
             for (let i = 0; i < lines.length; i++) {
                 if (lines[i].startsWith('#EXTINF:')) {
-                    const line = lines[i];
-                    const name = line.split(',')[1]?.trim() || 'Unknown Channel';
-                    const logo = (line.match(/tvg-logo="([^"]+)"/) || [])[1] || '';
+                    const infoLine = lines[i];
                     
-                    // Extract group-title attribute, fall back to 'Uncategorized' if missing
-                    const groupName = (line.match(/group-title="([^"]+)"/) || [])[1] || 'Uncategorized';
+                    // Extract channel configurations
+                    const name = infoLine.split(',')[1]?.trim() || 'Unknown';
+                    const logo = (infoLine.match(/tvg-logo="([^"]+)"/) || [])[1] || '';
                     
+                    // Target group via standard attribute extraction, fallback to legacy inline grouping rules
+                    let groupName = (infoLine.match(/group-title="([^"]+)"/) || [])[1] || 'Uncategorized';
+                    if (groupName === 'Uncategorized' && i > 0 && lines[i-1].startsWith('#EXTGRP:')) {
+                        groupName = lines[i-1].replace('#EXTGRP:', '').trim();
+                    }
+
                     let url = '';
                     for (let j = i + 1; j < lines.length; j++) {
-                        if (lines[j].startsWith('http')) { url = lines[j].trim(); break; }
+                        if (lines[j].trim().startsWith('http')) { 
+                            url = lines[j].trim(); 
+                            break; 
+                        }
                     }
-                    
+
                     if (url) {
                         if (!groups[groupName]) groups[groupName] = [];
                         groups[groupName].push({ name, logo, url });
@@ -145,29 +142,27 @@
                 }
             }
 
-            // Build structural group components inside container
-            let containerHtml = '';
-            for (const [groupName, channels] of Object.entries(groups)) {
-                let channelListHtml = '';
+            // Build Accordion Components (using native details/summary HTML blocks)
+            let html = '';
+            for (const [groupTitle, channels] of Object.entries(groups)) {
+                html += `
+                <details class="channel-group" open>
+                    <summary class="group-title">${groupTitle} (${channels.length})</summary>
+                    <ul class="group-content">`;
+                
                 channels.forEach(ch => {
-                    channelListHtml += `
+                    html += `
                     <li class="channel-item" onclick="play('${ch.url}', '${ch.name}', this)">
                         <img class="channel-logo" src="${ch.logo}" onerror="this.style.display='none'">
                         <span class="channel-name">${ch.name}</span>
                     </li>`;
                 });
 
-                containerHtml += `
-                <div class="channel-group">
-                    <div class="group-header" onclick="toggleGroup(this)">${groupName} (${channels.length})</div>
-                    <ul class="channel-list">${channelListHtml}</ul>
-                </div>`;
+                html += `
+                    </ul>
+                </details>`;
             }
-            container.innerHTML = containerHtml;
-        }
-
-        function toggleGroup(headerElement) {
-            headerElement.parentElement.classList.toggle('collapsed');
+            container.innerHTML = html;
         }
 
         function play(url, name, element) {
@@ -182,12 +177,14 @@
                 type = 'application/dash+xml';
             } else if (url.includes('.webm')) {
                 type = 'video/webm';
+            } else if (url.includes('.ogg') || url.includes('.ogv')) {
+                type = 'video/ogg';
             }
 
             if (player) {
                 player.src({ src: url, type: type });
                 player.ready(() => {
-                    player.play().catch(e => console.log("Playback error: ", e));
+                    player.play().catch(error => console.log("Playback interaction capture:", error));
                 });
             }
         }
@@ -195,42 +192,34 @@
         function filterChannels() {
             const q = document.getElementById('search-box').value.toLowerCase();
             
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                const isTabActive = tab.classList.contains('active');
-                const groups = tab.querySelectorAll('.channel-group');
+            document.querySelectorAll('.channel-list').forEach(list => {
+                const isTabActive = list.classList.contains('active');
+                const accordions = list.querySelectorAll('.channel-group');
                 
-                groups.forEach(group => {
+                accordions.forEach(group => {
                     const items = group.querySelectorAll('.channel-item');
-                    let visibleChannelsInGroup = 0;
+                    let visibleCount = 0;
 
                     items.forEach(el => {
                         const matchesSearch = el.innerText.toLowerCase().includes(q);
                         
                         if (q === '') {
-                            // Empty query context: reset visibility based strictly on current tab configuration
-                            el.style.display = 'flex';
-                            visibleChannelsInGroup++;
+                            el.style.display = isTabActive ? 'flex' : 'none';
+                            visibleCount++;
                         } else {
-                            // Search filtering query execution
-                            if (matchesSearch) {
-                                el.style.display = 'flex';
-                                visibleChannelsInGroup++;
-                            } else {
-                                el.style.display = 'none';
-                            }
+                            const showItem = matchesSearch;
+                            el.style.display = showItem ? 'flex' : 'none';
+                            if (showItem) visibleCount++;
                         }
                     });
 
-                    // Manage individual components based on conditions
+                    // Manage visibility and structural layout state of groups
                     if (q === '') {
-                        // Restore structural views when resetting filters
                         group.style.display = isTabActive ? 'block' : 'none';
-                        group.classList.remove('collapsed'); // Optional: keeps groups open or you can default to closed
                     } else {
-                        // During active filters, hide groups entirely if they contain zero matches
-                        if (visibleChannelsInGroup > 0) {
+                        if (visibleCount > 0) {
                             group.style.display = 'block';
-                            group.classList.remove('collapsed'); // Auto-expand matching groups during query filtering
+                            group.setAttribute('open', ''); // Auto expand categories containing search hits
                         } else {
                             group.style.display = 'none';
                         }
