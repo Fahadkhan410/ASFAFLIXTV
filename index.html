@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Live TV Portal</title>
+    <title>Universal IPTV & VOD Portal</title>
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -14,6 +14,14 @@
         #sidebar-header { padding: 20px; background-color: #1e1e1e; border-bottom: 1px solid #333; }
         #search-box { width: 100%; padding: 10px; background: #000; border: 1px solid #444; border-radius: 6px; color: #fff; margin-top: 10px; }
         
+        /* Custom URL Input Box */
+        .custom-url-container { background: #222; padding: 12px; border-radius: 6px; margin-top: 10px; border: 1px solid #333; }
+        .custom-url-container label { font-size: 0.75rem; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 5px; }
+        .url-input-group { display: flex; gap: 5px; }
+        #custom-url-input { flex: 1; padding: 8px; background: #000; border: 1px solid #444; color: #fff; border-radius: 4px; font-size: 0.85rem; }
+        #play-url-btn { padding: 8px 12px; background: #0078d4; border: none; color: white; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        #play-url-btn:hover { background: #005a9e; }
+
         /* Category Dropdown */
         #group-container { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
         #group-container label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -48,6 +56,15 @@
     <div id="sidebar">
         <div id="sidebar-header">
             <h2>Live Network</h2>
+            
+            <div class="custom-url-container">
+                <label for="custom-url-input">Play Custom VOD / IPTV Link</label>
+                <div class="url-input-group">
+                    <input type="text" id="custom-url-input" placeholder="Paste .m3u8, .mpd, or .mp4 URL here...">
+                    <button id="play-url-btn" onclick="playCustomUrl()">Play</button>
+                </div>
+            </div>
+
             <input type="text" id="search-box" placeholder="Filter channels..." oninput="filterChannels()">
             
             <div id="group-container">
@@ -90,7 +107,7 @@
         };
 
         let player = null;
-        let MasterGroupSet = new Set(); // Global store of loaded categories
+        let MasterGroupSet = new Set(); 
 
         document.addEventListener("DOMContentLoaded", () => {
             player = videojs('video-player', {
@@ -100,6 +117,32 @@
             });
             init();
         });
+
+        // Function dedicated to processing manually pasted user URL entries
+        function playCustomUrl() {
+            const urlInput = document.getElementById('custom-url-input').value.trim();
+            if (!urlInput) {
+                alert("Please enter a valid video stream link first!");
+                return;
+            }
+            
+            // Clean up selections inside the channel sidebar list items
+            document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+            
+            // Determine custom asset titles to display overlay metadata tags
+            let customTitle = "External Stream";
+            try {
+                const urlObj = new URL(urlInput);
+                const pathSegments = urlObj.pathname.split('/');
+                const lastSegment = pathSegments[pathSegments.length - 1];
+                if (lastSegment && lastSegment.includes('.')) {
+                    customTitle = lastSegment; // Extracts e.g. "movie.mp4" or "live.m3u8"
+                }
+            } catch(e) { /* Fallback to default label strings if string validation fails */ }
+
+            // Execute processing natively via standard player logic
+            play(urlInput, customTitle, null);
+        }
 
         function switchTab(id) {
             document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -141,7 +184,6 @@
                         }
                     }
                     if (url) {
-                        // Quotes and apostrophes are cleanly encoded to protect data-attributes
                         const escapedGroup = group.replace(/"/g, '&quot;');
                         const escapedName = name.replace(/'/g, "\\'");
                         
@@ -170,25 +212,34 @@
 
         function play(url, name, element) {
             document.getElementById('stream-title').innerText = name;
-            document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
+            
+            if (element) {
+                document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+                element.classList.add('active');
+            }
 
+            // Auto-detect Stream types securely based on file patterns inside the URLs
             let type = 'video/mp4';
             const testUrl = url.toLowerCase().split('?')[0];
-            if (testUrl.includes('.m3u8')) type = 'application/x-mpegURL';
-            else if (testUrl.includes('.mpd')) type = 'application/dash+xml';
-            else if (testUrl.includes('.webm')) type = 'video/webm';
-            else if (testUrl.includes('.ogg') || testUrl.includes('.ogv')) type = 'video/ogg';
+            
+            if (testUrl.includes('.m3u8')) {
+                type = 'application/x-mpegURL'; // HLS (IPTV live streams standard)
+            } else if (testUrl.includes('.mpd')) {
+                type = 'application/dash+xml';  // MPEG-DASH streams
+            } else if (testUrl.includes('.webm')) {
+                type = 'video/webm';
+            } else if (testUrl.includes('.ogg') || testUrl.includes('.ogv')) {
+                type = 'video/ogg';
+            }
 
             if (player) {
                 player.src({ src: url, type: type });
                 player.ready(() => {
-                    player.play().catch(err => console.log("Playback interaction deferred:", err));
+                    player.play().catch(err => console.log("Playback blocked or stream offline. Error details:", err));
                 });
             }
         }
 
-        // Handles filtering live content based on current selected tab and selected category group
         function filterChannels() {
             const searchInput = document.getElementById('search-box').value.toLowerCase();
             const chosenGroup = document.getElementById('group-select').value;
@@ -203,14 +254,12 @@
                     const matchesGroup = (chosenGroup === 'all' || elGroup === chosenGroup);
                     
                     if (searchInput === '') {
-                        // Default Mode: Channels must exist within the active navigation tab AND match category choice
                         if (isTabActive && matchesGroup) {
                             el.style.display = 'flex';
                         } else {
                             el.style.display = 'none';
                         }
                     } else {
-                        // Override Search Mode: Reveal matching components across tabs if category restriction allows it
                         if (matchesSearch && matchesGroup) {
                             el.style.display = 'flex';
                         } else {
