@@ -19,7 +19,7 @@
         #group-container label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
         #group-select { width: 100%; padding: 8px 10px; background: #252525; border: 1px solid #444; border-radius: 4px; color: #fff; outline: none; cursor: pointer; }
         
-        /* Tabs - Updated grid setup to accommodate 5 buttons smoothly */
+        /* Tabs */
         .tabs { display: grid; grid-template-columns: repeat(5, 1fr); background: #121212; margin-top: 10px; }
         .tab-btn { padding: 12px 2px; border: none; background: #1e1e1e; color: #888; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.75rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
         .tab-btn.active { color: #0078d4; border-bottom: 2px solid #0078d4; background: #181818; }
@@ -84,13 +84,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-dash/5.1.1/videojs-contrib-dash.min.js"></script>
 
     <script>
-        // PLAYLISTS Configuration: Appended your provided source link
         const PLAYLISTS = {
             tapmad: 'https://raw.githubusercontent.com/srhady/tapmad-bd/refs/heads/main/tapmad_bd.m3u',
             asfalive: 'https://asfaflix.arifmeghla410.workers.dev/',
             bdixtv: 'https://raw.githubusercontent.com/YasinErshad/BDIX-TV-M3U/main/BDIX_TV.m3u',
             mixtv: 'https://iptv-org.github.io/iptv/countries/bd.m3u',
-            rostelekom: 'http://dp2lucrl.rostelekom.xyz/iptv/LL3FDFFCM2P2BM'
+            // Added your new nested m3u8 playlist directory path
+            rostelekom: 'http://dp2lucrl.rostelekom.xyz/iptv/LL3FDFFCM2P2BM/6202/index.m3u8'
         };
 
         let player = null;
@@ -194,7 +194,10 @@
             element.classList.add('active');
 
             let type = 'application/x-mpegURL'; 
-            const testUrl = url.toLowerCase().split('?')[0];
+            const testUrl = url.toLowerCase();
+            
+            // FIXED: Improved format detection. Instead of splitting on '?', 
+            // it checks if '.m3u8' or '.mpd' exists anywhere inside the address path.
             if (testUrl.includes('.m3u8')) type = 'application/x-mpegURL';
             else if (testUrl.includes('.mpd')) type = 'application/dash+xml';
             else if (testUrl.includes('.mp4')) type = 'video/mp4';
