@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Universal Live TV Portal</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #121212; color: #ffffff; display: flex; height: 100vh; overflow: hidden; }
@@ -29,9 +29,12 @@
         .channel-logo { width: 36px; height: 36px; border-radius: 4px; margin-right: 15px; background: #000; object-fit: cover; }
         .channel-name { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+        /* Player Container Customizations */
         #player-container { flex: 1; display: flex; flex-direction: column; background: #000; justify-content: center; align-items: center; position: relative; }
-        video { width: 100%; max-height: 100vh; }
-        #stream-title { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; border: 1px solid #444; z-index: 10; }
+        #stream-title { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; border: 1px solid #444; z-index: 10; pointer-events: none; }
+        
+        /* Make Video.js fill the viewport container gracefully */
+        .video-js { width: 100% !important; height: 100% !important; }
     </style>
 </head>
 <body>
@@ -59,8 +62,11 @@
 
     <div id="player-container">
         <div id="stream-title">Select a channel</div>
-        <video id="video" controls autoplay playsinline></video>
+        <video id="video-player" class="video-js vjs-default-skin vjs-big-play-centered" controls autoplay preload="auto" playsinline></video>
     </div>
+
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-dash/5.1.1/videojs-contrib-dash.min.js"></script>
 
     <script>
         const PLAYLISTS = {
@@ -70,13 +76,21 @@
             mixtv: ''
         };
 
-        let hls = null;
+        let player = null;
+
+        // Initialize Player on Page Load
+        document.addEventListener("DOMContentLoaded", () => {
+            player = videojs('video-player', {
+                fluid: false,
+                responsive: true,
+                liveui: true // Provides UI optimizations specifically tailored for Live Streams
+            });
+            init();
+        });
 
         function switchTab(id) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.innerText.toLowerCase() === id));
             document.querySelectorAll('.channel-list').forEach(list => list.classList.toggle('active', list.id === `${id}-list`));
-            
-            // Re-apply filters specifically for the newly chosen active tab
             filterChannels();
         }
 
@@ -119,23 +133,27 @@
             document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
 
-            const video = document.getElementById('video');
+            // Detect matching stream types based on file patterns
+            let type = 'video/mp4'; // Default Fallback
             
-            if (hls) { hls.destroy(); hls = null; }
-
             if (url.includes('.m3u8')) {
-                if (Hls.isSupported()) {
-                    hls = new Hls();
-                    hls.loadSource(url);
-                    hls.attachMedia(video);
-                    hls.play();
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    video.src = url;
-                    video.play();
-                }
-            } else {
-                video.src = url;
-                video.play();
+                type = 'application/x-mpegURL';
+            } else if (url.includes('.mpd')) {
+                type = 'application/dash+xml';
+            } else if (url.includes('.webm')) {
+                type = 'video/webm';
+            } else if (url.includes('.ogg') || url.includes('.ogv')) {
+                type = 'video/ogg';
+            }
+
+            // Universal stream payload execution via Video.js API
+            if (player) {
+                player.src({ src: url, type: type });
+                player.ready(() => {
+                    player.play().catch(error => {
+                        console.log("Autoplay was prevented or resource failed to load: ", error);
+                    });
+                });
             }
         }
 
@@ -150,17 +168,13 @@
                     const matchesSearch = el.innerText.toLowerCase().includes(q);
                     
                     if (q === '') {
-                        // If search field is empty, show everything in the active tab, hide everything in background tabs
                         el.style.display = isTabActive ? 'flex' : 'none';
                     } else {
-                        // If searching, let global search take over matching items across playlists
                         el.style.display = matchesSearch ? 'flex' : 'none';
                     }
                 });
             });
         }
-
-        init();
     </script>
 </body>
 </html>
