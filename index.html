@@ -65,11 +65,11 @@
     </div>
 
     <script>
+        // Updated with your new BDIX worker M3U URL
         const PLAYLISTS = {
             tapmad: 'https://raw.githubusercontent.com/srhady/tapmad-bd/refs/heads/main/tapmad_bd.m3u',
             asfalive: 'https://raw.githubusercontent.com/Fahadkhan410/bdtest/refs/heads/main/cha.m3u',
-            // FIXED: Removed the faulty asfaflix cloudflare worker proxy and targeted the direct raw github file
-            bdixtv: 'https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u',
+            bdixtv: 'https://asfaflix.arifmeghla410.workers.dev/?url=https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u',
             mixtv: ''
         };
 
@@ -155,7 +155,7 @@
                     hls.loadSource(url);
                     hls.attachMedia(video);
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                        video.play().catch(err => console.log("Playback engine handled safely: ", err));
+                        video.play().catch(err => console.log("Autoplay blocked or stream interrupted: ", err));
                     });
                     hls.on(Hls.Events.ERROR, function (event, data) {
                         if (data.fatal) {
@@ -175,12 +175,12 @@
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                     video.src = url;
                     video.addEventListener('loadedmetadata', () => {
-                        video.play().catch(err => console.log(err));
+                        video.play().catch(err => console.log("Native playback error: ", err));
                     });
                 }
             } else {
                 video.src = url;
-                video.play().catch(err => console.log(err));
+                video.play().catch(err => console.log("Playback error: ", err));
             }
         }
 
