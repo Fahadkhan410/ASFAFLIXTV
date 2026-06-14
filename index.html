@@ -59,10 +59,10 @@
         </div>
         
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('tapmad')">Tapmad</button>
-            <button class="tab-btn" onclick="switchTab('asfalive')">ASFA</button>
-            <button class="tab-btn" onclick="switchTab('bdixtv')">BDIX</button>
-            <button class="tab-btn" onclick="switchTab('mixtv')">MIX</button>
+            <button class="tab-btn active" data-tab="tapmad" onclick="switchTab('tapmad')">Tapmad</button>
+            <button class="tab-btn" data-tab="asfalive" onclick="switchTab('asfalive')">ASFA</button>
+            <button class="tab-btn" data-tab="bdixtv" onclick="switchTab('bdixtv')">BDIX</button>
+            <button class="tab-btn" data-tab="mixtv" onclick="switchTab('mixtv')">MIX</button>
         </div>
 
         <div id="channel-list-container">
@@ -84,9 +84,9 @@
     <script>
         const PLAYLISTS = {
             tapmad: 'https://raw.githubusercontent.com/srhady/tapmad-bd/refs/heads/main/tapmad_bd.m3u',
-            asfalive: 'https://raw.githubusercontent.com/Fahadkhan410/bdtest/refs/heads/main/cha.m3u',
-            bdixtv: '',
-            mixtv: ''
+            asfalive: 'https://asfaflix.arifmeghla410.workers.dev/asfaflix/.index.js',
+            bdixtv: 'https://raw.githubusercontent.com/YasinErshad/BDIX-TV-M3U/main/BDIX_TV.m3u',
+            mixtv: 'https://iptv-org.github.io/iptv/countries/bd.m3u'
         };
 
         let player = null;
@@ -103,10 +103,11 @@
 
         function switchTab(id) {
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                const targetText = id === 'bdixtv' ? 'bdix' : id;
-                btn.classList.toggle('active', btn.innerText.toLowerCase() === targetText);
+                btn.classList.toggle('active', btn.getAttribute('data-tab') === id);
             });
-            document.querySelectorAll('.channel-list').forEach(list => list.classList.toggle('active', list.id === `${id}-list`));
+            document.querySelectorAll('.channel-list').forEach(list => {
+                list.classList.toggle('active', list.id === `${id}-list`);
+            });
             filterChannels(false);
         }
 
@@ -202,66 +203,44 @@
             }
         }
 
-        // Handles conditional updates across all streaming lists
         function filterChannels(isCategoryChange = false) {
             const searchInput = document.getElementById('search-box').value.toLowerCase();
             const chosenGroup = document.getElementById('group-select').value;
             
             let tabsWithMatches = new Set();
-            let currentActiveTabId = document.querySelector('.channel-list.active')?.id;
+            let currentActiveList = document.querySelector('.channel-list.active');
+            let currentActiveTabId = currentActiveList ? currentActiveList.id : '';
 
-            // Step 1: Run filter logic over every channel list item
+            // Filter everything across all playlists
             document.querySelectorAll('.channel-list').forEach(list => {
                 const listId = list.id;
-                const isTabActive = list.classList.contains('active');
                 const items = list.querySelectorAll('.channel-item');
                 
                 items.forEach(el => {
                     const elGroup = el.getAttribute('data-group');
-                    const matchesSearch = el.querySelector('.channel-name').innerText.toLowerCase().includes(searchInput);
+                    const channelName = el.querySelector('.channel-name').innerText.toLowerCase();
+                    
+                    const matchesSearch = channelName.includes(searchInput);
                     const matchesGroup = (chosenGroup === 'all' || elGroup === chosenGroup);
                     
-                    let shouldShow = false;
-
-                    if (searchInput === '') {
-                        // Category Only Mode: Identify availability across all provider lists
-                        if (matchesGroup) {
-                            shouldShow = true;
-                            tabsWithMatches.add(listId);
+                    if (matchesSearch && matchesGroup) {
+                        tabsWithMatches.add(listId);
+                        if (list.classList.contains('active')) {
+                            el.style.display = 'flex';
+                        } else {
+                            el.style.display = 'none';
                         }
-                    } else {
-                        // Combo mode (Search String + Category selection)
-                        if (matchesSearch && matchesGroup) {
-                            shouldShow = true;
-                            tabsWithMatches.add(listId);
-                        }
-                    }
-
-                    // Apply visual visibility rules based on active active tab container constraints
-                    if (shouldShow && (searchInput !== '' || isTabActive)) {
-                        el.style.display = 'flex';
                     } else {
                         el.style.display = 'none';
                     }
                 });
             });
 
-            // Step 2: Auto-focus tab switch behavior on category changes
+            // Switch to tab automatically if selected category doesn't have matches in current viewport
             if (isCategoryChange && tabsWithMatches.size > 0 && !tabsWithMatches.has(currentActiveTabId)) {
-                // Instantly pivot viewport to target first list matching requirements
                 const firstMatchingListId = Array.from(tabsWithMatches)[0];
                 const cleanTabName = firstMatchingListId.replace('-list', '');
                 switchTab(cleanTabName);
-            } else if (searchInput === '') {
-                // Clean up step: Ensure display types fix correctly on standard tab views
-                document.querySelectorAll('.channel-list').forEach(list => {
-                    const isTabActive = list.classList.contains('active');
-                    list.querySelectorAll('.channel-item').forEach(el => {
-                        const elGroup = el.getAttribute('data-group');
-                        const matchesGroup = (chosenGroup === 'all' || elGroup === chosenGroup);
-                        el.style.display = (isTabActive && matchesGroup) ? 'flex' : 'none';
-                    });
-                });
             }
         }
     </script>
