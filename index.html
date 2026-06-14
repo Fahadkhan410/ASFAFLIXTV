@@ -3,70 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Match Stream</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <title>AsfaFlix Live Player</title>
+    <!-- Include Video.js CSS for styling -->
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
     <style>
         body {
-            font-family: Arial, sans-serif;
             background-color: #111;
-            color: #fff;
-            margin: 0;
-            padding: 0;
+            color: white;
+            font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
+            margin: 0;
         }
-        .stream-container {
-            width: 100%;
+        .player-container {
+            width: 90%;
             max-width: 800px;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        video {
-            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            background-color: #000;
+            overflow: hidden;
         }
-        h1 {
-            font-size: 1.5rem;
-            text-align: center;
-            margin-bottom: 15px;
+        .video-js {
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+        .controls {
+            margin-top: 20px;
+            width: 90%;
+            max-width: 800px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            background: #222;
+            border: 1px solid #444;
+            color: white;
+            border-radius: 4px;
+            box-sizing: border-box;
         }
     </style>
 </head>
 <body>
 
-    <div class="stream-container">
-        <h1>Live Stream</h1>
-        <video id="video" controls autoplay playsinline muted></video>
+    <h2>AsfaFlix Player Updates</h2>
+    
+    <div class="player-container">
+        <!-- The video element setup with Video.js classes -->
+        <video 
+            id="asfa-player" 
+            class="video-js vjs-default-skin vjs-big-play-centered" 
+            controls 
+            preload="auto" 
+            data-setup='{}'>
+            <p class="vjs-no-js">
+                To view this video please enable JavaScript, and consider upgrading to a web browser that supports HTML5 video.
+            </p>
+        </video>
     </div>
 
+    <div class="controls">
+        <p>💡 <strong>Troubleshooting Note:</strong> If your stream link starts with <code>http://</code> and this page is loaded over <code>https://</code>, your browser will block it due to "Mixed Content". Try opening this page on a local web server running on HTTP, or update your stream source to HTTPS.</p>
+    </div>
+
+    <!-- Include Video.js Engine (Handles HLS and fMP4 natively) -->
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+
     <script>
-        // Your live stream URL
+        // Initialize the player
+        const player = videojs('asfa-player');
+
+        // Target stream URL (Your provided link)
         const streamUrl = "http://180.94.28.28:8097/Fifa-2026/index.fmp4.m3u8?token=98432116951be6ea3920335200f43cbca6f86b50-a1b6cd6f35e6aaa2dc380844b5636927-1781443221-1781439621";
-        const video = document.getElementById('video');
 
-        if (Hls.isSupported()) {
-            const hls = new Hls();
-            hls.loadSource(streamUrl);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                video.play();
-            });
-        }
-        // Native support check (primarily for Safari on Mac/iOS)
-        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = streamUrl;
-            video.addEventListener('loadedmetadata', function() {
-                video.play();
-            });
-        } else {
-            alert("Your browser does not support HLS streaming.");
-        }
+        // Load the source into the engine as an HLS stream
+        player.src({
+            src: streamUrl,
+            type: 'application/x-mpegURL'
+        });
     </script>
-
 </body>
 </html>
