@@ -89,14 +89,9 @@
             asfalive: 'https://asfaflix.arifmeghla410.workers.dev/',
             bdixtv: 'https://raw.githubusercontent.com/YasinErshad/BDIX-TV-M3U/main/BDIX_TV.m3u',
             mixtv: 'https://iptv-org.github.io/iptv/countries/bd.m3u',
+            // Added your new nested m3u8 playlist directory path
             rostelekom: 'http://dp2lucrl.rostelekom.xyz/iptv/LL3FDFFCM2P2BM/6202/index.m3u8'
         };
-
-        // Fallback proxy utility to resolve Mixed Content (HTTP on HTTPS) and CORS roadblocks
-        const PROXIES = [
-            url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            url => `https://corsproxy.io/?${encodeURIComponent(url)}`
-        ];
 
         let player = null;
         let MasterGroupSet = new Set(); 
@@ -105,12 +100,7 @@
             player = videojs('video-player', {
                 fluid: false,
                 responsive: true,
-                liveui: true,
-                html5: {
-                    vhs: { overrideNative: true },
-                    nativeAudioTracks: false,
-                    nativeVideoTracks: false
-                }
+                liveui: true
             });
             init();
         });
@@ -125,50 +115,24 @@
             filterChannels(false);
         }
 
-        async function fetchPlaylist(url) {
-            // First attempt: Direct structural fetch
-            try {
-                const res = await fetch(url);
-                if (res.ok) return await res.text();
-            } catch (e) {
-                console.warn(`Direct fetch failed for ${url}, trying fallback proxies...`);
-            }
-
-            // Fallback attempts via proxy routing
-            for (const proxy invention of PROXIES) {
-                try {
-                    const res = await fetch(invention(url));
-                    if (res.ok) return await res.text();
-                } catch (e) {
-                    console.error("Proxy routing attempt failed:", e);
-                }
-            }
-            throw new Error(`Unable to fetch stream source playlist data: ${url}`);
-        }
-
         async function init() {
             for (const [key, url] of Object.entries(PLAYLISTS)) {
                 if(!url) continue;
                 try {
-                    const text = await fetchPlaylist(url);
-                    parseM3U(text, document.getElementById(`${key}-list`), url);
-                } catch(e) { 
-                    console.error(`Error loading playlist context structural assets for: ${key}`, e); 
-                }
+                    const res = await fetch(url);
+                    const text = await res.text();
+                    parseM3U(text, document.getElementById(`${key}-list`));
+                } catch(e) { console.error(`Error loading ${key}`, e); }
             }
             updateGroupDropdown();
             filterChannels(false);
         }
 
-        function parseM3U(data, container, playlistUrl) {
+        function parseM3U(data, container) {
             if (!container) return;
             const lines = data.split(/\r?\n/);
             let html = '';
             
-            // Extracts the root path context to support relative playlist pathing configurations
-            const urlObj = new URL(playlistUrl);
-            const baseUrl = playlistUrl.substring(0, playlistUrl.lastIndexOf('/') + 1);
-
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (line.startsWith('#EXTINF:')) {
@@ -189,7 +153,7 @@
                         const nextLine = lines[j].trim();
                         if (nextLine === '') continue;
                         if (nextLine.startsWith('#')) break; 
-                        if (!nextLine.startsWith('#')) {
+                        if (nextLine.toLowerCase().startsWith('http')) {
                             url = nextLine;
                             i = j; 
                             break;
@@ -197,15 +161,6 @@
                     }
                     
                     if (url) {
-                        // Resolves relative video chunk segments paths (e.g., "mono.m3u8") into absolute URLs
-                        if (!url.toLowerCase().startsWith('http')) {
-                            if (url.startsWith('/')) {
-                                url = urlObj.origin + url;
-                            } else {
-                                url = baseUrl + url;
-                            }
-                        }
-
                         const escapedGroup = group.replace(/"/g, '&quot;');
                         const escapedName = name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                         
@@ -241,20 +196,16 @@
             let type = 'application/x-mpegURL'; 
             const testUrl = url.toLowerCase();
             
+            // FIXED: Improved format detection. Instead of splitting on '?', 
+            // it checks if '.m3u8' or '.mpd' exists anywhere inside the address path.
             if (testUrl.includes('.m3u8')) type = 'application/x-mpegURL';
             else if (testUrl.includes('.mpd')) type = 'application/dash+xml';
             else if (testUrl.includes('.mp4')) type = 'video/mp4';
 
-            // Automatically intercepts and appends a proxy handler to individual stream media links 
-            // if you are hosting this application file within an enforced HTTPS environment.
-            if (url.startsWith('http://') && window.location.protocol === 'https:') {
-                url = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-            }
-
             if (player) {
                 player.src({ src: url, type: type });
                 player.ready(() => {
-                    player.play().catch(err => console.log("Playback engine delayed interaction initialization:", err));
+                    player.play().catch(err => console.log("Playback interaction deferred:", err));
                 });
             }
         }
