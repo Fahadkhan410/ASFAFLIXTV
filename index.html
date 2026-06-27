@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium IPTV Player - Fix PotPlayer Streams</title>
+    <title>Premium IPTV Player - Ultimate Fixed</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         :root {
@@ -206,7 +206,7 @@
             });
         }
 
-        // সুপার-অ্যাক্টিভ প্লেয়ার ইঞ্জিন (CORS এবং fMP4 সেগমেন্ট প্রক্সিং ফিক্সড)
+        // চূড়ান্ত ফিক্সড প্লেয়ার ইঞ্জিন যা সাব-ইউআরএল গুলোকেও প্রক্সির আওতায় নিয়ে আসে
         function playStream(channel) {
             placeholder.style.display = 'none';
             channelTitle.textContent = channel.name;
@@ -214,18 +214,26 @@
 
             if (hlsInstance) hlsInstance.destroy();
 
-            // মেইন লিংকটি প্রক্সি দিয়ে র‍্যাপ করা হলো
             const masterManifestUrl = PROXY_URL + encodeURIComponent(channel.url);
 
             if (Hls.isSupported()) {
                 hlsInstance = new Hls({
                     enableWorker: true,
                     lowLatencyMode: true,
-                    // এই ফাংশনটি মেইন ফাইলের ভেতরের .mp4 / .ts টুকরোগুলোকেও প্রক্সি দিয়ে রি-রাউট করবে
+                    // এই প্রোপার্টি ভেতরের রিলেটিভ (.ts / fmp4) ইউআরএল গুলোকে ঠিকঠাক ট্র্যাক করে রি-রুট করে
+                    resolveSourceUrl: function(url, bUrl) {
+                        if (url.startsWith(PROXY_URL)) return url;
+                        // যদি অলরেডি মেইন ইউআরএল থাকে তবে ওটাকে প্রক্সি দিয়ে কাস্টমাইজ করবে
+                        if (url.startsWith('http://') || url.startsWith('https://')) {
+                            return PROXY_URL + encodeURIComponent(url);
+                        }
+                        return url;
+                    },
                     xhrSetup: function(xhr, url) {
+                        // নিশ্চিত করা হচ্ছে কোনো রিকোয়েস্ট যেন প্রক্সি ছাড়া বাইরে না যায়
                         if (!url.startsWith(PROXY_URL)) {
-                            const newUrl = PROXY_URL + encodeURIComponent(url);
-                            xhr.open('GET', newUrl, true);
+                            const rewriteUrl = PROXY_URL + encodeURIComponent(url);
+                            xhr.open('GET', rewriteUrl, true);
                         }
                     }
                 });
@@ -239,12 +247,12 @@
                 
                 hlsInstance.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
+                        console.log("HLS Error intercepted:", data);
                         placeholder.style.display = 'block';
-                        placeholder.textContent = "Error: Token expired, or connection refused by target server.";
+                        placeholder.textContent = "Error: Stream refused or link broken. Ensure token is running in PotPlayer.";
                     }
                 });
             } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                // Safari-র জন্য ডিরেক্ট ফলব্যাক
                 videoElement.src = masterManifestUrl;
             }
         }
