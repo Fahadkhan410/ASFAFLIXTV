@@ -3,112 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IPTV Player - Stream Pipe Edition</title>
+    <title>Star Sports 1 - Live Stream</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        :root {
-            --bg-main: #0f1115;
-            --bg-sidebar: #161920;
-            --bg-card: #202430;
-            --text-main: #f3f4f6;
-            --text-muted: #9ca3af;
-            --blue-active: #0076df;
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0b0e14;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: sans-serif;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-        body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 340px; background-color: var(--bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid #27272a; padding: 15px; }
-        .section-title { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; font-weight: 700; }
-        #channel-list { flex: 1; overflow-y: auto; margin-top: 10px; }
-        .channel-item { display: flex; align-items: center; padding: 12px; margin-bottom: 6px; background: var(--bg-card); border-radius: 6px; cursor: pointer; }
-        .channel-item.active { background: var(--blue-active); }
-        .channel-name { font-weight: 500; font-size: 0.85rem; }
-        #main-content { flex: 1; display: flex; flex-direction: column; }
-        #player-container { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
-        video { width: 100%; height: 100%; }
-        #placeholder { position: absolute; color: var(--text-muted); font-size: 1rem; z-index: 10; }
+        #player-container {
+            width: 90%;
+            max-width: 960px;
+            aspect-ratio: 16/9;
+            background: #000;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        video {
+            width: 100%;
+            height: 100%;
+        }
+        #status {
+            position: absolute;
+            color: #9ca3af;
+            font-size: 1.1rem;
+            z-index: 10;
+            pointer-events: none;
+            width: 100%;
+            text-align: center;
+            top: 50%;
+            transform: translateY(-50%);
+        }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <div class="section-title">Live Channels</div>
-        <div id="channel-list"></div>
-    </div>
-
-    <div id="main-content">
-        <div id="player-container">
-            <div id="placeholder">Select a channel to test stream</div>
-            <video id="video" controls autoplay playsinline></video>
-        </div>
+    <div id="player-container">
+        <div id="status">Connecting to Star Sports 1...</div>
+        <video id="video" controls autoplay playsinline></video>
     </div>
 
     <script>
-        const PROXY_URL = "https://shiny-lake-84e9.asfaiptv410.workers.dev/?url=";
-        const PLAYLIST_URL = "https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u";
+        // তোর ক্লাউডফ্লেয়ার প্রক্সি লিংক
+        const WORKER_URL = "https://shiny-lake-84e9.asfaiptv410.workers.dev/?url=";
+        
+        // তোর লাইভ খেলার লিংক
+        const TARGET_STREAM = "http://180.94.28.28:8097/STAR-SPORTS-1/index.fmp4.m3u8?token=0c05c2540242be3f79a6bd2b868e2560f17a72a8-070d71e786049b06da1b81b7e7321e98-1781451412-1781447812";
 
-        const videoElement = document.getElementById('video');
-        const placeholder = document.getElementById('placeholder');
-        const channelListContainer = document.getElementById('channel-list');
-        let hlsInstance = null;
+        const video = document.getElementById('video');
+        const statusText = document.getElementById('status');
 
-        function loadPlaylist() {
-            fetch(PROXY_URL + encodeURIComponent(PLAYLIST_URL))
-                .then(res => res.text())
-                .then(data => {
-                    const lines = data.split('\n');
-                    let currentName = '';
-                    
-                    lines.forEach(line => {
-                        line = line.trim();
-                        if (line.startsWith('#EXTINF:')) {
-                            const parts = line.split(',');
-                            currentName = parts[parts.length - 1] || 'Live Stream';
-                        } else if (line && !line.startsWith('#')) {
-                            createChannelRow(currentName, line);
-                        }
-                    });
-                });
-        }
-
-        function createChannelRow(name, url) {
-            const row = document.createElement('div');
-            row.className = 'channel-item';
-            row.innerHTML = `<span class="channel-name">${name}</span>`;
-            row.onclick = () => {
-                document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
-                row.classList.add('active');
-                play(url);
-            };
-            channelListContainer.appendChild(row);
-        }
-
-        function play(streamUrl) {
-            placeholder.style.display = 'none';
-            if (hlsInstance) hlsInstance.destroy();
-
-            // মেইন লিংকটি সম্পূর্ণ ওয়ার্কার প্রক্সি মোডে যাচ্ছে
-            const finalUrl = PROXY_URL + encodeURIComponent(streamUrl.trim());
+        function startPlayback() {
+            const finalPipeUrl = WORKER_URL + encodeURIComponent(TARGET_STREAM);
 
             if (Hls.isSupported()) {
-                hlsInstance = new Hls({
+                const hls = new Hls({
                     enableWorker: true,
-                    lowLatencyMode: true
+                    lowLatencyMode: true,
+                    fragLoadingMaxRetry: 5,
+                    manifestLoadingMaxRetry: 5
                 });
-                hlsInstance.loadSource(finalUrl);
-                hlsInstance.attachMedia(videoElement);
-                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => videoElement.play().catch(()=>{}));
-                hlsInstance.on(Hls.Events.ERROR, (e, data) => {
+
+                hls.loadSource(finalPipeUrl);
+                hls.attachMedia(video);
+
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    statusText.style.display = 'none';
+                    video.play().catch(() => {});
+                });
+
+                hls.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
-                        placeholder.style.display = 'block';
-                        placeholder.textContent = "Error: Stream handshake blocked by destination server.";
+                        console.error(data);
+                        statusText.textContent = "Stream error. Ensure token is active in PotPlayer.";
                     }
                 });
-            } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                videoElement.src = finalUrl;
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Safari বা iOS এর জন্য নেটিভ সাপোর্ট
+                video.src = finalPipeUrl;
+                video.addEventListener('loadedmetadata', () => {
+                    statusText.style.display = 'none';
+                    video.play();
+                });
             }
         }
 
-        window.addEventListener('DOMContentLoaded', loadPlaylist);
+        // পেজ লোড হলেই প্লেব্যাক শুরু হবে
+        window.addEventListener('DOMContentLoaded', startPlayback);
     </script>
 </body>
 </html>
