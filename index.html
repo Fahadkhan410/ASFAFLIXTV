@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium IPTV Web Player - fMP4 Supported</title>
-    <!-- Include Hls.js library -->
+    <title>Premium IPTV Player - Fix PotPlayer Streams</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         :root {
@@ -13,220 +12,69 @@
             --bg-card: #202430;
             --text-main: #f3f4f6;
             --text-muted: #9ca3af;
-            
             --green-active: #22c55e;
             --blue-active: #0076df;
             --btn-dark: #1e222b;
             --btn-hover: #2d3343;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        #sidebar { width: 360px; background-color: var(--bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid #27272a; }
+        .filter-section { padding: 16px; border-bottom: 1px solid #27272a; }
+        .section-title { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; font-weight: 700; }
+        .pill-container { display: flex; flex-wrap: wrap; gap: 8px; }
+        
+        .playlist-btn { background: var(--btn-dark); color: var(--text-main); border: 1px solid #27272a; padding: 8px 14px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+        .playlist-btn.active { background: var(--green-active); border-color: var(--green-active); color: white; }
+        
+        .category-pill { background: var(--btn-dark); color: var(--text-muted); border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        .category-pill.active { background: var(--blue-active); color: white; }
 
-        body {
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
+        #channel-list { flex: 1; overflow-y: auto; padding: 12px; }
+        .channel-item { display: flex; align-items: center; padding: 10px; margin-bottom: 6px; background: var(--bg-card); border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+        .channel-item:hover { border-color: var(--blue-active); }
+        .channel-item.active { background: var(--blue-active); border-color: var(--blue-active); }
+        .channel-logo { width: 36px; height: 36px; object-fit: contain; background: #000; border-radius: 4px; margin-right: 12px; }
+        .channel-name { font-weight: 500; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        #sidebar {
-            width: 360px;
-            background-color: var(--bg-sidebar);
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #27272a;
-        }
-
-        .filter-section {
-            padding: 16px;
-            border-bottom: 1px solid #27272a;
-        }
-
-        .section-title {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-
-        .pill-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .playlist-btn {
-            background: var(--btn-dark);
-            color: var(--text-main);
-            border: 1px solid #27272a;
-            padding: 8px 14px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .playlist-btn:hover {
-            background: var(--btn-hover);
-        }
-        .playlist-btn.active {
-            background: var(--green-active);
-            border-color: var(--green-active);
-            color: white;
-        }
-
-        .category-pill {
-            background: var(--btn-dark);
-            color: var(--text-muted);
-            border: none;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-        }
-        .category-pill:hover {
-            background: var(--btn-hover);
-            color: var(--text-main);
-        }
-        .category-pill.active {
-            background: var(--blue-active);
-            color: white;
-        }
-
-        #channel-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px;
-        }
-
-        .channel-item {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            margin-bottom: 6px;
-            background: var(--bg-card);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: transform 0.1s, border 0.1s;
-            border: 1px solid transparent;
-        }
-        .channel-item:hover {
-            border-color: var(--blue-active);
-            transform: translateX(4px);
-        }
-        .channel-item.active {
-            background: var(--blue-active);
-            border-color: var(--blue-active);
-        }
-
-        .channel-logo {
-            width: 36px;
-            height: 36px;
-            object-fit: contain;
-            background: #000;
-            border-radius: 4px;
-            margin-right: 12px;
-        }
-
-        .channel-name {
-            font-weight: 500;
-            font-size: 0.85rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        #main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: var(--bg-main);
-        }
-
-        #player-container {
-            flex: 1;
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
-        video {
-            width: 100%;
-            height: 100%;
-        }
-
-        #player-placeholder {
-            position: absolute;
-            color: var(--text-muted);
-            font-size: 1.1rem;
-            pointer-events: none;
-            padding: 20px;
-            text-align: center;
-        }
-
-        #video-info-bar {
-            padding: 20px;
-            background: var(--bg-sidebar);
-            border-top: 1px solid #27272a;
-        }
-
-        #current-channel-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-        }
-
-        #current-channel-category {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
+        #main-content { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); }
+        #player-container { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
+        video { width: 100%; height: 100%; }
+        #player-placeholder { position: absolute; color: var(--text-muted); font-size: 1.1rem; text-align: center; pointer-events: none; }
+        #video-info-bar { padding: 20px; background: var(--bg-sidebar); border-top: 1px solid #27272a; }
+        #current-channel-title { font-size: 1.3rem; font-weight: 700; }
+        #current-channel-category { font-size: 0.9rem; color: var(--text-muted); margin-top: 4px; }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
         <div class="filter-section">
-            <div class="section-title">Select M3U Playlist File</div>
+            <div class="section-title">M3U Playlists</div>
             <div class="pill-container" id="playlist-container"></div>
         </div>
-
         <div class="filter-section">
-            <div class="section-title">Filter by Group Category</div>
+            <div class="section-title">Categories</div>
             <div class="pill-container" id="category-container"></div>
         </div>
-
         <div id="channel-list">
-            <div id="loading-status" style="padding: 10px; color: var(--text-muted);">Initializing dashboards...</div>
+            <div style="padding: 10px; color: var(--text-muted);">Loading system...</div>
         </div>
     </div>
 
     <div id="main-content">
         <div id="player-container">
-            <div id="player-placeholder">Choose a channel from the list to begin streaming.</div>
-            <video id="video" controls></video>
+            <div id="player-placeholder">Select a channel to play</div>
+            <video id="video" controls autoplay></video>
         </div>
         <div id="video-info-bar">
-            <div id="current-channel-title">No Channel Selected</div>
-            <div id="current-channel-category">Please choose a playlist and channel item from the sidebar layout.</div>
+            <div id="current-channel-title">No Stream Running</div>
+            <div id="current-channel-category">Select a live dynamic feed.</div>
         </div>
     </div>
 
     <script>
-        // Configuration Properties
         const PROXY_URL = "https://shiny-lake-84e9.asfaiptv410.workers.dev/?url=";
 
         const PLAYLISTS_CONFIG = [
@@ -249,7 +97,6 @@
         const channelTitle = document.getElementById('current-channel-title');
         const channelCategory = document.getElementById('current-channel-category');
 
-        // Parse M3U logic
         function parseM3U(m3uString) {
             const lines = m3uString.split('\n');
             const channels = [];
@@ -284,10 +131,7 @@
                 const btn = document.createElement('button');
                 btn.className = `playlist-btn ${activePlaylistConfig.id === playlist.id ? 'active' : ''}`;
                 btn.textContent = playlist.name;
-                
                 btn.onclick = () => {
-                    document.querySelectorAll('.playlist-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
                     activeCategoryFilter = "ALL"; 
                     activePlaylistConfig = playlist;
                     fetchAndLoadPlaylist(playlist.url);
@@ -297,16 +141,13 @@
         }
 
         function fetchAndLoadPlaylist(url) {
-            channelListContainer.innerHTML = '<div style="color:var(--text-muted);padding:10px;">Syncing channels feed data...</div>';
+            channelListContainer.innerHTML = '<div style="color:var(--text-muted);padding:10px;">Loading links from GitHub...</div>';
+            generatePlaylistButtons();
             
             fetch(PROXY_URL + encodeURIComponent(url))
-                .then(res => {
-                    if (!res.ok) throw new Error("Network connectivity limits.");
-                    return res.text();
-                })
+                .then(res => res.text())
                 .then(data => {
                     let parsed = parseM3U(data);
-                    
                     if (activePlaylistConfig.id === "live-tapmad") {
                         rawChannelsList = parsed.filter(c => c.category.toLowerCase().includes('tapmad'));
                     } else if (activePlaylistConfig.id === "free-live") {
@@ -316,27 +157,23 @@
                     } else {
                         rawChannelsList = parsed;
                     }
-
-                    generatePlaylistButtons();
                     renderCategoryPills();
                     applyFilters();
                 })
-                .catch(err => {
-                    channelListContainer.innerHTML = '<div style="color:#ef4444;padding:10px;">Failed to fetch channel configurations.</div>';
+                .catch(() => {
+                    channelListContainer.innerHTML = '<div style="color:#ef4444;padding:10px;">Failed to parse playlist file.</div>';
                 });
         }
 
         function renderCategoryPills() {
             const categories = [...new Set(rawChannelsList.map(c => c.category))].sort();
             categoryContainer.innerHTML = `<button class="category-pill ${activeCategoryFilter === 'ALL' ? 'active' : ''}" id="cat-pill-all">ALL</button>`;
-            
             document.getElementById('cat-pill-all').onclick = (e) => selectCategory('ALL', e.target);
 
             categories.forEach(catName => {
                 const pill = document.createElement('button');
                 pill.className = `category-pill ${activeCategoryFilter === catName ? 'active' : ''}`;
-                const visualPrefix = catName.toLowerCase().includes('vod') ? '► ' : '';
-                pill.textContent = `${visualPrefix}${catName.toUpperCase()}`;
+                pill.textContent = catName.toUpperCase();
                 pill.onclick = (e) => selectCategory(catName, e.target);
                 categoryContainer.appendChild(pill);
             });
@@ -344,7 +181,7 @@
 
         function selectCategory(category, element) {
             activeCategoryFilter = category;
-            document.querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active'));
+            document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
             element.classList.add('active');
             applyFilters();
         }
@@ -353,21 +190,13 @@
             channelListContainer.innerHTML = '';
             const filtered = activeCategoryFilter === "ALL" ? rawChannelsList : rawChannelsList.filter(c => c.category === activeCategoryFilter);
 
-            if (filtered.length === 0) {
-                channelListContainer.innerHTML = '<div style="color:var(--text-muted);padding:10px;">No streams found.</div>';
-                return;
-            }
-
             filtered.forEach(channel => {
                 const row = document.createElement('div');
                 row.className = 'channel-item';
-                const fallbackLogo = 'https://via.placeholder.com/36/000000/FFFFFF?text=TV';
-
                 row.innerHTML = `
-                    <img class="channel-logo" src="${channel.logo || fallbackLogo}" onerror="this.src='${fallbackLogo}'" alt="">
+                    <img class="channel-logo" src="${channel.logo || 'https://via.placeholder.com/36/000?text=TV'}" onerror="this.src='https://via.placeholder.com/36/000?text=TV'">
                     <span class="channel-name">${channel.name}</span>
                 `;
-
                 row.onclick = () => {
                     document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
                     row.classList.add('active');
@@ -377,7 +206,7 @@
             });
         }
 
-        // Updated core engine supporting complex fMP4, parameters, and proxy routing
+        // সুপার-অ্যাক্টিভ প্লেয়ার ইঞ্জিন (CORS এবং fMP4 সেগমেন্ট প্রক্সিং ফিক্সড)
         function playStream(channel) {
             placeholder.style.display = 'none';
             channelTitle.textContent = channel.name;
@@ -385,19 +214,23 @@
 
             if (hlsInstance) hlsInstance.destroy();
 
-            // Intercepting full parameters string safely through the proxy wrapper
-            const targetStreamUrl = PROXY_URL + encodeURIComponent(channel.url);
+            // মেইন লিংকটি প্রক্সি দিয়ে র‍্যাপ করা হলো
+            const masterManifestUrl = PROXY_URL + encodeURIComponent(channel.url);
 
             if (Hls.isSupported()) {
                 hlsInstance = new Hls({
-                    enableWorker: true,        // Critical optimization for fMP4 parsing/demuxing chunks
-                    lowLatencyMode: true,      // Ensures immediate stitching of dynamic streams
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    // এই ফাংশনটি মেইন ফাইলের ভেতরের .mp4 / .ts টুকরোগুলোকেও প্রক্সি দিয়ে রি-রাউট করবে
                     xhrSetup: function(xhr, url) {
-                        xhr.withCredentials = false;
+                        if (!url.startsWith(PROXY_URL)) {
+                            const newUrl = PROXY_URL + encodeURIComponent(url);
+                            xhr.open('GET', newUrl, true);
+                        }
                     }
                 });
                 
-                hlsInstance.loadSource(targetStreamUrl);
+                hlsInstance.loadSource(masterManifestUrl);
                 hlsInstance.attachMedia(videoElement);
                 
                 hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -407,23 +240,16 @@
                 hlsInstance.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
                         placeholder.style.display = 'block';
-                        placeholder.textContent = "Playback failed. Stream token has likely expired or is offline.";
+                        placeholder.textContent = "Error: Token expired, or connection refused by target server.";
                     }
                 });
             } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                // Fallback architecture for default native environments (Mac Safari / Apple Core devices)
-                videoElement.src = targetStreamUrl;
-                videoElement.addEventListener('loadedmetadata', () => {
-                    videoElement.play().catch(() => {});
-                });
-            } else {
-                placeholder.style.display = 'block';
-                placeholder.textContent = "Your browser structure does not support this HLS stream format configuration.";
+                // Safari-র জন্য ডিরেক্ট ফলব্যাক
+                videoElement.src = masterManifestUrl;
             }
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            generatePlaylistButtons();
             fetchAndLoadPlaylist(PLAYLISTS_CONFIG[0].url);
         });
     </script>
