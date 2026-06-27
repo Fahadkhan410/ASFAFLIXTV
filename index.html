@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium IPTV Player - Ultimate Fixed Pro</title>
+    <title>IPTV Player - Stream Pipe Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         :root {
@@ -12,264 +12,103 @@
             --bg-card: #202430;
             --text-main: #f3f4f6;
             --text-muted: #9ca3af;
-            --green-active: #22c55e;
             --blue-active: #0076df;
-            --btn-dark: #1e222b;
-            --btn-hover: #2d3343;
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 360px; background-color: var(--bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid #27272a; }
-        .filter-section { padding: 16px; border-bottom: 1px solid #27272a; }
+        #sidebar { width: 340px; background-color: var(--bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid #27272a; padding: 15px; }
         .section-title { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; font-weight: 700; }
-        .pill-container { display: flex; flex-wrap: wrap; gap: 8px; }
-        
-        .playlist-btn { background: var(--btn-dark); color: var(--text-main); border: 1px solid #27272a; padding: 8px 14px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
-        .playlist-btn.active { background: var(--green-active); border-color: var(--green-active); color: white; }
-        
-        .category-pill { background: var(--btn-dark); color: var(--text-muted); border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
-        .category-pill.active { background: var(--blue-active); color: white; }
-
-        #channel-list { flex: 1; overflow-y: auto; padding: 12px; }
-        .channel-item { display: flex; align-items: center; padding: 10px; margin-bottom: 6px; background: var(--bg-card); border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
-        .channel-item:hover { border-color: var(--blue-active); }
-        .channel-item.active { background: var(--blue-active); border-color: var(--blue-active); }
-        .channel-logo { width: 36px; height: 36px; object-fit: contain; background: #000; border-radius: 4px; margin-right: 12px; }
-        .channel-name { font-weight: 500; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        #main-content { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); }
+        #channel-list { flex: 1; overflow-y: auto; margin-top: 10px; }
+        .channel-item { display: flex; align-items: center; padding: 12px; margin-bottom: 6px; background: var(--bg-card); border-radius: 6px; cursor: pointer; }
+        .channel-item.active { background: var(--blue-active); }
+        .channel-name { font-weight: 500; font-size: 0.85rem; }
+        #main-content { flex: 1; display: flex; flex-direction: column; }
         #player-container { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
         video { width: 100%; height: 100%; }
-        #player-placeholder { position: absolute; color: var(--text-muted); font-size: 1.1rem; text-align: center; pointer-events: none; z-index: 10; padding: 20px; }
-        #video-info-bar { padding: 20px; background: var(--bg-sidebar); border-top: 1px solid #27272a; }
-        #current-channel-title { font-size: 1.3rem; font-weight: 700; }
-        #current-channel-category { font-size: 0.9rem; color: var(--text-muted); margin-top: 4px; }
+        #placeholder { position: absolute; color: var(--text-muted); font-size: 1rem; z-index: 10; }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
-        <div class="filter-section">
-            <div class="section-title">M3U Playlists</div>
-            <div class="pill-container" id="playlist-container"></div>
-        </div>
-        <div class="filter-section">
-            <div class="section-title">Categories</div>
-            <div class="pill-container" id="category-container"></div>
-        </div>
-        <div id="channel-list">
-            <div style="padding: 10px; color: var(--text-muted);">Syncing IPTV Nodes...</div>
-        </div>
+        <div class="section-title">Live Channels</div>
+        <div id="channel-list"></div>
     </div>
 
     <div id="main-content">
         <div id="player-container">
-            <div id="player-placeholder">Select a channel to play</div>
+            <div id="placeholder">Select a channel to test stream</div>
             <video id="video" controls autoplay playsinline></video>
-        </div>
-        <div id="video-info-bar">
-            <div id="current-channel-title">No Stream Running</div>
-            <div id="current-channel-category">Select a live feed from the sidebar.</div>
         </div>
     </div>
 
     <script>
         const PROXY_URL = "https://shiny-lake-84e9.asfaiptv410.workers.dev/?url=";
+        const PLAYLIST_URL = "https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u";
 
-        const PLAYLISTS_CONFIG = [
-            { id: "bd-tv", name: "All Playlists", url: "https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u" },
-            { id: "live-tapmad", name: "Live-Tapmad", url: "https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u" },
-            { id: "free-live", name: "Free-Live TV", url: "https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u" },
-            { id: "movies-vod", name: "Movies-VOD", url: "https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u" }
-        ];
-
-        let rawChannelsList = []; 
-        let activeCategoryFilter = "ALL";
-        let activePlaylistConfig = PLAYLISTS_CONFIG[0];
+        const videoElement = document.getElementById('video');
+        const placeholder = document.getElementById('placeholder');
+        const channelListContainer = document.getElementById('channel-list');
         let hlsInstance = null;
 
-        const playlistContainer = document.getElementById('playlist-container');
-        const categoryContainer = document.getElementById('category-container');
-        const channelListContainer = document.getElementById('channel-list');
-        const videoElement = document.getElementById('video');
-        const placeholder = document.getElementById('player-placeholder');
-        const channelTitle = document.getElementById('current-channel-title');
-        const channelCategory = document.getElementById('current-channel-category');
-
-        function parseM3U(m3uString) {
-            const lines = m3uString.split('\n');
-            const channels = [];
-            let currentChannel = null;
-            const regexAttributes = /([a-zA-Z0-9_-]+)="([^"]*)"/g;
-
-            for (let line of lines) {
-                line = line.trim();
-                if (line.startsWith('#EXTINF:')) {
-                    currentChannel = { name: 'Unknown Stream', category: 'Uncategorized', logo: '', url: '' };
-                    let match;
-                    while ((match = regexAttributes.exec(line)) !== null) {
-                        const key = match[1].toLowerCase();
-                        const value = match[2];
-                        if (key === 'group-title') currentChannel.category = value;
-                        else if (key === 'tvg-logo') currentChannel.logo = value;
-                    }
-                    const commaIndex = line.lastIndexOf(',');
-                    if (commaIndex !== -1) currentChannel.name = line.substring(commaIndex + 1).trim();
-                } else if (line && !line.startsWith('#') && currentChannel) {
-                    currentChannel.url = line;
-                    channels.push(currentChannel);
-                    currentChannel = null;
-                }
-            }
-            return channels;
-        }
-
-        function generatePlaylistButtons() {
-            playlistContainer.innerHTML = '';
-            PLAYLISTS_CONFIG.forEach((playlist) => {
-                const btn = document.createElement('button');
-                btn.className = `playlist-btn ${activePlaylistConfig.id === playlist.id ? 'active' : ''}`;
-                btn.textContent = playlist.name;
-                btn.onclick = () => {
-                    activeCategoryFilter = "ALL"; 
-                    activePlaylistConfig = playlist;
-                    fetchAndLoadPlaylist(playlist.url);
-                };
-                playlistContainer.appendChild(btn);
-            });
-        }
-
-        function fetchAndLoadPlaylist(url) {
-            channelListContainer.innerHTML = '<div style="color:var(--text-muted);padding:10px;">Loading links from GitHub...</div>';
-            generatePlaylistButtons();
-            
-            fetch(PROXY_URL + encodeURIComponent(url))
+        function loadPlaylist() {
+            fetch(PROXY_URL + encodeURIComponent(PLAYLIST_URL))
                 .then(res => res.text())
                 .then(data => {
-                    let parsed = parseM3U(data);
-                    if (activePlaylistConfig.id === "live-tapmad") {
-                        rawChannelsList = parsed.filter(c => c.category.toLowerCase().includes('tapmad'));
-                    } else if (activePlaylistConfig.id === "free-live") {
-                        rawChannelsList = parsed.filter(c => c.category.toLowerCase().includes('free'));
-                    } else if (activePlaylistConfig.id === "movies-vod") {
-                        rawChannelsList = parsed.filter(c => c.category.toLowerCase().includes('vod'));
-                    } else {
-                        rawChannelsList = parsed;
-                    }
-                    renderCategoryPills();
-                    applyFilters();
-                })
-                .catch(() => {
-                    channelListContainer.innerHTML = '<div style="color:#ef4444;padding:10px;">Failed to parse playlist file.</div>';
+                    const lines = data.split('\n');
+                    let currentName = '';
+                    
+                    lines.forEach(line => {
+                        line = line.trim();
+                        if (line.startsWith('#EXTINF:')) {
+                            const parts = line.split(',');
+                            currentName = parts[parts.length - 1] || 'Live Stream';
+                        } else if (line && !line.startsWith('#')) {
+                            createChannelRow(currentName, line);
+                        }
+                    });
                 });
         }
 
-        function renderCategoryPills() {
-            const categories = [...new Set(rawChannelsList.map(c => c.category))].sort();
-            categoryContainer.innerHTML = `<button class="category-pill ${activeCategoryFilter === 'ALL' ? 'active' : ''}" id="cat-pill-all">ALL</button>`;
-            document.getElementById('cat-pill-all').onclick = (e) => selectCategory('ALL', e.target);
-
-            categories.forEach(catName => {
-                const pill = document.createElement('button');
-                pill.className = `category-pill ${activeCategoryFilter === catName ? 'active' : ''}`;
-                pill.textContent = catName.toUpperCase();
-                pill.onclick = (e) => selectCategory(catName, e.target);
-                categoryContainer.appendChild(pill);
-            });
+        function createChannelRow(name, url) {
+            const row = document.createElement('div');
+            row.className = 'channel-item';
+            row.innerHTML = `<span class="channel-name">${name}</span>`;
+            row.onclick = () => {
+                document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+                row.classList.add('active');
+                play(url);
+            };
+            channelListContainer.appendChild(row);
         }
 
-        function selectCategory(category, element) {
-            activeCategoryFilter = category;
-            document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
-            element.classList.add('active');
-            applyFilters();
-        }
-
-        function applyFilters() {
-            channelListContainer.innerHTML = '';
-            const filtered = activeCategoryFilter === "ALL" ? rawChannelsList : rawChannelsList.filter(c => c.category === activeCategoryFilter);
-
-            filtered.forEach(channel => {
-                const row = document.createElement('div');
-                row.className = 'channel-item';
-                row.innerHTML = `
-                    <img class="channel-logo" src="${channel.logo || 'https://via.placeholder.com/36/000?text=TV'}" onerror="this.src='https://via.placeholder.com/36/000?text=TV'">
-                    <span class="channel-name">${channel.name}</span>
-                `;
-                row.onclick = () => {
-                    document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
-                    row.classList.add('active');
-                    playStream(channel);
-                };
-                channelListContainer.appendChild(row);
-            });
-        }
-
-        // রিয়েল-টাইম আর্কিটেকচার ইঞ্জিন (fMP4 ইন্টারনাল চেইন ট্র্যাকিং এনাবল্ড)
-        function playStream(channel) {
+        function play(streamUrl) {
             placeholder.style.display = 'none';
-            channelTitle.textContent = channel.name;
-            channelCategory.textContent = channel.category;
-
             if (hlsInstance) hlsInstance.destroy();
 
-            const cleanUrl = channel.url.trim();
-            const masterManifestUrl = PROXY_URL + encodeURIComponent(cleanUrl);
+            // মেইন লিংকটি সম্পূর্ণ ওয়ার্কার প্রক্সি মোডে যাচ্ছে
+            const finalUrl = PROXY_URL + encodeURIComponent(streamUrl.trim());
 
             if (Hls.isSupported()) {
                 hlsInstance = new Hls({
                     enableWorker: true,
-                    lowLatencyMode: true,
-                    maxBufferLength: 20,
-                    maxMaxBufferLength: 40,
-                    // এই মডিউলটি ইন্টারনাল রিলেটিভ পাথ জেনারেশনের সময় প্যারামিটার লুপ ভাঙতে বাধা দেয়
-                    resolveSourceUrl: function(url, bUrl) {
-                        let absoluteTarget = url;
-                        
-                        // যদি ইউআরএলটি অলরেডি ফুললি কোয়ালিফাইড না হয়, তবে বেস ইউআরএল থেকে পাথ তৈরি করা হচ্ছে
-                        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                            const cleanBase = bUrl.startsWith(PROXY_URL) ? decodeURIComponent(bUrl.split('?url=')[1]) : bUrl;
-                            const baseObj = new URL(cleanBase);
-                            
-                            // আসল টোকেন কোয়েরি ফিল্ড আলাদা করা হচ্ছে
-                            const tokenParam = baseObj.search; 
-                            const baseUrlWithoutQuery = baseObj.href.split('?')[0];
-                            const baseDir = baseUrlWithoutQuery.substring(0, baseUrlWithoutQuery.lastIndexOf('/') + 1);
-                            
-                            absoluteTarget = baseDir + url + tokenParam;
-                        }
-
-                        // ফাইনাল চেকআপ—সব রিকোয়েস্ট ওয়ার্কার প্রক্সি দিয়ে র‍্যাপ করা
-                        if (!absoluteTarget.startsWith(PROXY_URL)) {
-                            return PROXY_URL + encodeURIComponent(absoluteTarget);
-                        }
-                        return absoluteTarget;
-                    }
+                    lowLatencyMode: true
                 });
-                
-                hlsInstance.loadSource(masterManifestUrl);
+                hlsInstance.loadSource(finalUrl);
                 hlsInstance.attachMedia(videoElement);
-                
-                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-                    videoElement.play().catch(() => {});
-                });
-                
-                hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => videoElement.play().catch(()=>{}));
+                hlsInstance.on(Hls.Events.ERROR, (e, data) => {
                     if (data.fatal) {
-                        console.error("HLS Core Engine Log:", data);
                         placeholder.style.display = 'block';
-                        placeholder.textContent = "Error: Token Handshake Denied. Refreshing playlist nodes.";
+                        placeholder.textContent = "Error: Stream handshake blocked by destination server.";
                     }
                 });
             } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                videoElement.src = masterManifestUrl;
+                videoElement.src = finalUrl;
             }
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            fetchAndLoadPlaylist(PLAYLISTS_CONFIG[0].url);
-        });
+        window.addEventListener('DOMContentLoaded', loadPlaylist);
     </script>
 </body>
 </html>
