@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium IPTV Web Player - 100% Stream Fixed</title>
+    <title>Premium IPTV Web Player - Dynamic Generation</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         :root {
@@ -34,6 +34,7 @@
             overflow: hidden;
         }
 
+        /* Sidebar UI Container */
         #sidebar {
             width: 360px;
             background-color: var(--bg-sidebar);
@@ -62,6 +63,7 @@
             gap: 8px;
         }
 
+        /* Playlist Filter Buttons (Green) */
         .playlist-btn {
             background: var(--btn-dark);
             color: var(--text-main);
@@ -82,6 +84,7 @@
             color: white;
         }
 
+        /* Category Filter Pills (Blue) */
         .category-pill {
             background: var(--btn-dark);
             color: var(--text-muted);
@@ -104,6 +107,7 @@
             color: white;
         }
 
+        /* Channels View List */
         #channel-list {
             flex: 1;
             overflow-y: auto;
@@ -147,6 +151,7 @@
             text-overflow: ellipsis;
         }
 
+        /* Video Viewport Area */
         #main-content {
             flex: 1;
             display: flex;
@@ -200,39 +205,65 @@
     <div id="sidebar">
         <div class="filter-section">
             <div class="section-title">Select M3U Playlist File</div>
-            <div class="pill-container" id="playlist-container">
-                <div style="color: var(--text-muted); font-size: 0.85rem;">Connecting via Proxy Worker...</div>
-            </div>
+            <div class="pill-container" id="playlist-container"></div>
         </div>
 
         <div class="filter-section">
             <div class="section-title">Filter by Group Category</div>
-            <div class="pill-container" id="category-container">
-                <button class="category-pill active">ALL</button>
-            </div>
+            <div class="pill-container" id="category-container"></div>
         </div>
 
-        <div id="channel-list"></div>
+        <div id="channel-list">
+            <div id="loading-status" style="padding: 10px; color: var(--text-muted);">Initializing dashboards...</div>
+        </div>
     </div>
 
     <div id="main-content">
         <div id="player-container">
-            <div id="player-placeholder">Select a channel to begin broadcast loop.</div>
+            <div id="player-placeholder">Choose a dynamic feed connection.</div>
             <video id="video" controls></video>
         </div>
         <div id="video-info-bar">
             <div id="current-channel-title">No Channel Selected</div>
-            <div id="current-channel-category">Please choose an active stream from the sidebar.</div>
+            <div id="current-channel-category">Please choose a playlist and channel item from the sidebar layout.</div>
         </div>
     </div>
 
     <script>
-        const M3U_PLAYLIST_URL = "https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u";
+        /**
+         * PROXY CONFIGURATION
+         */
         const PROXY_URL = "https://shiny-lake-84e9.asfaiptv410.workers.dev/?url=";
 
-        let parsedChannelsGlobal = []; 
-        let activePlaylistTab = "All Playlists";
+        /**
+         * CONFIGURATION CONFIG INDEX
+         */
+        const PLAYLISTS_CONFIG = [
+            { 
+                id: "bd-tv", 
+                name: "All Playlists", 
+                url: "https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u" 
+            },
+            { 
+                id: "live-tapmad", 
+                name: "Live-Tapmad", 
+                url: "https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u"
+            },
+            { 
+                id: "free-live", 
+                name: "Free-Live TV", 
+                url: "https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u"
+            },
+            { 
+                id: "movies-vod", 
+                name: "Movies-VOD", 
+                url: "https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u"
+            }
+        ];
+
+        let rawChannelsList = []; 
         let activeCategoryFilter = "ALL";
+        let activePlaylistConfig = PLAYLISTS_CONFIG[0];
         let hlsInstance = null;
 
         const playlistContainer = document.getElementById('playlist-container');
@@ -243,6 +274,7 @@
         const channelTitle = document.getElementById('current-channel-title');
         const channelCategory = document.getElementById('current-channel-category');
 
+        // M3U Processing Engine
         function parseM3U(m3uString) {
             const lines = m3uString.split('\n');
             const channels = [];
@@ -271,110 +303,105 @@
             return channels;
         }
 
-        function formatTabDisplay(categoryName) {
-            if (categoryName.toLowerCase().includes('tapmad')) return "Live-Tapmad";
-            if (categoryName.toLowerCase().includes('free')) return "Free-Live TV";
-            if (categoryName.toLowerCase().includes('vod')) return "Movies-VOD";
-            return categoryName;
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            // Read initial text configuration safely via proxy
-            fetch(PROXY_URL + encodeURIComponent(M3U_PLAYLIST_URL))
-                .then(res => {
-                    if(!res.ok) throw new Error("Connection failed");
-                    return res.text();
-                })
-                .then(data => {
-                    parsedChannelsGlobal = parseM3U(data);
-                    if(parsedChannelsGlobal.length === 0) {
-                        placeholder.textContent = "Empty playlist tracks.";
-                        return;
-                    }
-                    placeholder.textContent = "Select a channel to begin live playback feed.";
-                    generateDynamicPlaylistTabs();
-                    renderCategoryPills();
-                    applyFilters();
-                })
-                .catch(err => {
-                    playlistContainer.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;">Error connection.</div>';
-                    placeholder.textContent = "Could not sync playlist structural configurations.";
-                });
-        });
-
-        function generateDynamicPlaylistTabs() {
+        // 1. Generate the Top Playlist Selection Buttons Automatically
+        function generatePlaylistButtons() {
             playlistContainer.innerHTML = '';
-            const uniqueCategoriesInFile = [...new Set(parsedChannelsGlobal.map(c => c.category))];
-            const tabOptions = ["All Playlists"];
             
-            uniqueCategoriesInFile.forEach(cat => {
-                if(cat && cat !== 'Uncategorized') tabOptions.push(cat);
-            });
-
-            tabOptions.forEach(tabRawValue => {
+            PLAYLISTS_CONFIG.forEach((playlist) => {
                 const btn = document.createElement('button');
-                btn.className = `playlist-btn ${activePlaylistTab === tabRawValue ? 'active' : ''}`;
-                btn.textContent = formatTabDisplay(tabRawValue);
+                btn.className = `playlist-btn ${activePlaylistConfig.id === playlist.id ? 'active' : ''}`;
+                btn.id = `pl-btn-${playlist.id}`;
+                btn.textContent = playlist.name;
                 
                 btn.onclick = () => {
-                    document.querySelectorAll('.playlist-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.playlist-btn').forEach(b => b.remove('active'));
                     btn.classList.add('active');
-                    activePlaylistTab = tabRawValue;
-                    activeCategoryFilter = "ALL";
-                    renderCategoryPills();
-                    applyFilters();
+                    
+                    activeCategoryFilter = "ALL"; 
+                    activePlaylistConfig = playlist;
+                    fetchAndLoadPlaylist(playlist.url);
                 };
+
                 playlistContainer.appendChild(btn);
             });
         }
 
+        // 2. Fetch Playlist via Proxy and Reset Core States
+        function fetchAndLoadPlaylist(url) {
+            channelListContainer.innerHTML = '<div style="color:var(--text-muted);padding:10px;">Syncing channels feed data...</div>';
+            
+            // Fixed: Wrapped with PROXY_URL to unblock cross-origin access on pages.dev
+            fetch(PROXY_URL + encodeURIComponent(url))
+                .then(res => {
+                    if (!res.ok) throw new Error("Network connectivity limits.");
+                    return res.text();
+                })
+                .then(data => {
+                    let parsed = parseM3U(data);
+                    
+                    // Filter down list elements if the user clicked specific custom configuration lists
+                    if (activePlaylistConfig.id === "live-tapmad") {
+                        rawChannelsList = parsed.filter(c => c.category.toLowerCase().includes('tapmad'));
+                    } else if (activePlaylistConfig.id === "free-live") {
+                        rawChannelsList = parsed.filter(c => c.category.toLowerCase().includes('free'));
+                    } else if (activePlaylistConfig.id === "movies-vod") {
+                        rawChannelsList = parsed.filter(c => c.category.toLowerCase().includes('vod'));
+                    } else {
+                        rawChannelsList = parsed;
+                    }
+
+                    generatePlaylistButtons();
+                    renderCategoryPills();
+                    applyFilters();
+                })
+                .catch(err => {
+                    channelListContainer.innerHTML = '<div style="color:#ef4444;padding:10px;">Failed to fetch channel configurations. Check proxy server.</div>';
+                });
+        }
+
+        // 3. Dynamic Category Generation Matching Your Reference Image
         function renderCategoryPills() {
-            categoryContainer.innerHTML = '';
-            let targetChannels = activePlaylistTab === "All Playlists" 
-                ? parsedChannelsGlobal 
-                : parsedChannelsGlobal.filter(c => c.category === activePlaylistTab);
+            const categories = [...new Set(rawChannelsList.map(c => c.category))].sort();
+            
+            categoryContainer.innerHTML = `<button class="category-pill ${activeCategoryFilter === 'ALL' ? 'active' : ''}" id="cat-pill-all">ALL</button>`;
+            
+            document.getElementById('cat-pill-all').onclick = (e) => selectCategory('ALL', e.target);
 
-            const subCategories = [...new Set(targetChannels.map(c => c.category))].sort();
-
-            const allPill = document.createElement('button');
-            allPill.className = `category-pill ${activeCategoryFilter === 'ALL' ? 'active' : ''}`;
-            allPill.textContent = "ALL";
-            allPill.onclick = () => {
-                document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
-                allPill.classList.add('active');
-                activeCategoryFilter = "ALL";
-                applyFilters();
-            };
-            categoryContainer.appendChild(allPill);
-
-            subCategories.forEach(catName => {
+            categories.forEach(catName => {
                 const pill = document.createElement('button');
                 pill.className = `category-pill ${activeCategoryFilter === catName ? 'active' : ''}`;
-                const playIconPrefix = catName.toLowerCase().includes('vod') ? '► ' : '';
-                pill.textContent = `${playIconPrefix}${catName.toUpperCase()}`;
                 
-                pill.onclick = () => {
-                    document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
-                    pill.classList.add('active');
-                    activeCategoryFilter = catName;
-                    applyFilters();
-                };
+                const visualPrefix = catName.toLowerCase().includes('vod') ? '► ' : '';
+                pill.textContent = `${visualPrefix}${catName.toUpperCase()}`;
+                
+                pill.onclick = (e) => selectCategory(catName, e.target);
                 categoryContainer.appendChild(pill);
             });
         }
 
+        function selectCategory(category, element) {
+            activeCategoryFilter = category;
+            
+            document.querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active'));
+            element.classList.add('active');
+            
+            applyFilters();
+        }
+
+        // 4. Render Main Channel Lists
         function applyFilters() {
             channelListContainer.innerHTML = '';
-            let channelsToDisplay = parsedChannelsGlobal;
+            
+            const filtered = activeCategoryFilter === "ALL" 
+                ? rawChannelsList 
+                : rawChannelsList.filter(c => c.category === activeCategoryFilter);
 
-            if (activePlaylistTab !== "All Playlists") {
-                channelsToDisplay = channelsToDisplay.filter(c => c.category === activePlaylistTab);
-            }
-            if (activeCategoryFilter !== "ALL") {
-                channelsToDisplay = channelsToDisplay.filter(c => c.category === activeCategoryFilter);
+            if (filtered.length === 0) {
+                channelListContainer.innerHTML = '<div style="color:var(--text-muted);padding:10px;">No streams found under this filter choice.</div>';
+                return;
             }
 
-            channelsToDisplay.forEach(channel => {
+            filtered.forEach(channel => {
                 const row = document.createElement('div');
                 row.className = 'channel-item';
                 const fallbackLogo = 'https://via.placeholder.com/36/000000/FFFFFF?text=TV';
@@ -389,10 +416,12 @@
                     row.classList.add('active');
                     playStream(channel);
                 };
+
                 channelListContainer.appendChild(row);
             });
         }
 
+        // 5. Video Playback Core Engine
         function playStream(channel) {
             placeholder.style.display = 'none';
             channelTitle.textContent = channel.name;
@@ -400,30 +429,34 @@
 
             if (hlsInstance) hlsInstance.destroy();
 
-            // FIXED: Direct playback bypasses the proxy to allow pristine streaming
-            const directStreamUrl = channel.url; 
+            // Direct playback stream (No proxy encapsulation needed here)
+            const directStreamUrl = channel.url;
 
             if (Hls.isSupported() && directStreamUrl.includes('.m3u8')) {
                 hlsInstance = new Hls();
                 hlsInstance.loadSource(directStreamUrl);
                 hlsInstance.attachMedia(videoElement);
-                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-                    videoElement.play().catch(() => {});
-                });
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => videoElement.play().catch(() => {}));
                 hlsInstance.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
                         placeholder.style.display = 'block';
-                        placeholder.textContent = "Stream playback failed. The URL format might require a local app context or token update.";
+                        placeholder.textContent = "Playback interrupted or blocked by provider cross-origin rules.";
                     }
                 });
             } else {
                 videoElement.src = directStreamUrl;
                 videoElement.play().catch(() => {
                     placeholder.style.display = 'block';
-                    placeholder.textContent = "Format error or video access blocked by provider.";
+                    placeholder.textContent = "Error playing live asset link stream feed.";
                 });
             }
         }
+
+        // Initial Startup Engine Boot
+        window.addEventListener('DOMContentLoaded', () => {
+            generatePlaylistButtons();
+            fetchAndLoadPlaylist(PLAYLISTS_CONFIG[0].url);
+        });
     </script>
 </body>
 </html>
