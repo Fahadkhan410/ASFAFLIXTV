@@ -1,102 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Star Sports 1 - Live Stream</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #0b0e14;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            font-family: sans-serif;
-        }
-        #player-container {
-            width: 90%;
-            max-width: 960px;
-            aspect-ratio: 16/9;
-            background: #000;
-            position: relative;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        video {
-            width: 100%;
-            height: 100%;
-        }
-        #status {
-            position: absolute;
-            color: #9ca3af;
-            font-size: 1.1rem;
-            z-index: 10;
-            pointer-events: none;
-            width: 100%;
-            text-align: center;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-    </style>
-</head>
-<body>
-
-    <div id="player-container">
-        <div id="status">Connecting to Star Sports 1...</div>
-        <video id="video" controls autoplay playsinline></video>
-    </div>
-
-    <script>
-        // তোর ক্লাউডফ্লেয়ার প্রক্সি লিংক
-        const WORKER_URL = "https://shiny-lake-84e9.asfaiptv410.workers.dev/?url=";
-        
-        // তোর লাইভ খেলার লিংক
-        const TARGET_STREAM = "http://180.94.28.28:8097/STAR-SPORTS-1/index.fmp4.m3u8?token=0c05c2540242be3f79a6bd2b868e2560f17a72a8-070d71e786049b06da1b81b7e7321e98-1781451412-1781447812";
-
-        const video = document.getElementById('video');
-        const statusText = document.getElementById('status');
-
-        function startPlayback() {
-            const finalPipeUrl = WORKER_URL + encodeURIComponent(TARGET_STREAM);
-
-            if (Hls.isSupported()) {
-                const hls = new Hls({
-                    enableWorker: true,
-                    lowLatencyMode: true,
-                    fragLoadingMaxRetry: 5,
-                    manifestLoadingMaxRetry: 5
-                });
-
-                hls.loadSource(finalPipeUrl);
-                hls.attachMedia(video);
-
-                hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    statusText.style.display = 'none';
-                    video.play().catch(() => {});
-                });
-
-                hls.on(Hls.Events.ERROR, (event, data) => {
-                    if (data.fatal) {
-                        console.error(data);
-                        statusText.textContent = "Stream error. Ensure token is active in PotPlayer.";
-                    }
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                // Safari বা iOS এর জন্য নেটিভ সাপোর্ট
-                video.src = finalPipeUrl;
-                video.addEventListener('loadedmetadata', () => {
-                    statusText.style.display = 'none';
-                    video.play();
-                });
-            }
-        }
-
-        // পেজ লোড হলেই প্লেব্যাক শুরু হবে
-        window.addEventListener('DOMContentLoaded', startPlayback);
-    </script>
-</body>
-</html>
+<video id="video" controls width="100%"></video>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+  var video = document.getElementById('video');
+  var videoSrc = 'http://114.130.57.233:8080/T-Sports/tracks-v1a1/mono.m3u8?token=SkQuhAXZxgBan1';
+  if (Hls.isSupported()) {
+    var hls = new Hls();
+    hls.loadSource(videoSrc);
+    hls.attachMedia(video);
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = videoSrc;
+  }
+</script>
