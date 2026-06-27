@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium IPTV Web Player - Fully Unblocked</title>
+    <title>Premium IPTV Web Player - 100% Stream Fixed</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         :root {
@@ -34,7 +34,6 @@
             overflow: hidden;
         }
 
-        /* Sidebar Containers */
         #sidebar {
             width: 360px;
             background-color: var(--bg-sidebar);
@@ -63,7 +62,6 @@
             gap: 8px;
         }
 
-        /* Playlist Tabs (Green Style) */
         .playlist-btn {
             background: var(--btn-dark);
             color: var(--text-main);
@@ -84,7 +82,6 @@
             color: white;
         }
 
-        /* Category Sub-pills (Blue Style) */
         .category-pill {
             background: var(--btn-dark);
             color: var(--text-muted);
@@ -107,7 +104,6 @@
             color: white;
         }
 
-        /* Channel Rows Container */
         #channel-list {
             flex: 1;
             overflow-y: auto;
@@ -151,7 +147,6 @@
             text-overflow: ellipsis;
         }
 
-        /* Video Content Workspace */
         #main-content {
             flex: 1;
             display: flex;
@@ -222,20 +217,17 @@
 
     <div id="main-content">
         <div id="player-container">
-            <div id="player-placeholder">Processing unblocked M3U streams...</div>
+            <div id="player-placeholder">Select a channel to begin broadcast loop.</div>
             <video id="video" controls></video>
         </div>
         <div id="video-info-bar">
             <div id="current-channel-title">No Channel Selected</div>
-            <div id="current-channel-category">Please choose an active stream card link.</div>
+            <div id="current-channel-category">Please choose an active stream from the sidebar.</div>
         </div>
     </div>
 
     <script>
-        // M3U Playlist Source
         const M3U_PLAYLIST_URL = "https://raw.githubusercontent.com/abusaeeidx/BDxTV/refs/heads/main/channels_pl2.m3u";
-        
-        // Integrated Your Cloudflare Worker Proxy Link
         const PROXY_URL = "https://shiny-lake-84e9.asfaiptv410.workers.dev/?url=";
 
         let parsedChannelsGlobal = []; 
@@ -251,7 +243,6 @@
         const channelTitle = document.getElementById('current-channel-title');
         const channelCategory = document.getElementById('current-channel-category');
 
-        // M3U Processing Engine Parser
         function parseM3U(m3uString) {
             const lines = m3uString.split('\n');
             const channels = [];
@@ -280,7 +271,6 @@
             return channels;
         }
 
-        // Helper function to turn raw category values into clean visual names
         function formatTabDisplay(categoryName) {
             if (categoryName.toLowerCase().includes('tapmad')) return "Live-Tapmad";
             if (categoryName.toLowerCase().includes('free')) return "Free-Live TV";
@@ -288,8 +278,8 @@
             return categoryName;
         }
 
-        // Fetch initialization loop on page startup
         window.addEventListener('DOMContentLoaded', () => {
+            // Read initial text configuration safely via proxy
             fetch(PROXY_URL + encodeURIComponent(M3U_PLAYLIST_URL))
                 .then(res => {
                     if(!res.ok) throw new Error("Connection failed");
@@ -297,63 +287,49 @@
                 })
                 .then(data => {
                     parsedChannelsGlobal = parseM3U(data);
-                    
                     if(parsedChannelsGlobal.length === 0) {
                         placeholder.textContent = "Empty playlist tracks.";
                         return;
                     }
-
                     placeholder.textContent = "Select a channel to begin live playback feed.";
-                    
                     generateDynamicPlaylistTabs();
                     renderCategoryPills();
                     applyFilters();
                 })
                 .catch(err => {
                     playlistContainer.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;">Error connection.</div>';
-                    placeholder.textContent = "Could not proxy data feeds. Confirm your Worker handles incoming routing cleanly.";
+                    placeholder.textContent = "Could not sync playlist structural configurations.";
                 });
         });
 
-        // Generate Playlist layout buttons cleanly matching existing categories inside the file
         function generateDynamicPlaylistTabs() {
             playlistContainer.innerHTML = '';
-
             const uniqueCategoriesInFile = [...new Set(parsedChannelsGlobal.map(c => c.category))];
             const tabOptions = ["All Playlists"];
             
             uniqueCategoriesInFile.forEach(cat => {
-                if(cat && cat !== 'Uncategorized') {
-                    tabOptions.push(cat);
-                }
+                if(cat && cat !== 'Uncategorized') tabOptions.push(cat);
             });
 
             tabOptions.forEach(tabRawValue => {
                 const btn = document.createElement('button');
                 btn.className = `playlist-btn ${activePlaylistTab === tabRawValue ? 'active' : ''}`;
-                
-                // Formats titles beautifully to clean layouts
                 btn.textContent = formatTabDisplay(tabRawValue);
                 
                 btn.onclick = () => {
                     document.querySelectorAll('.playlist-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
-                    
                     activePlaylistTab = tabRawValue;
                     activeCategoryFilter = "ALL";
-                    
                     renderCategoryPills();
                     applyFilters();
                 };
-
                 playlistContainer.appendChild(btn);
             });
         }
 
-        // Build the second row sub-category pills depending on active top tab selection context
         function renderCategoryPills() {
             categoryContainer.innerHTML = '';
-            
             let targetChannels = activePlaylistTab === "All Playlists" 
                 ? parsedChannelsGlobal 
                 : parsedChannelsGlobal.filter(c => c.category === activePlaylistTab);
@@ -374,8 +350,6 @@
             subCategories.forEach(catName => {
                 const pill = document.createElement('button');
                 pill.className = `category-pill ${activeCategoryFilter === catName ? 'active' : ''}`;
-                
-                // Adds clean visual play symbol prefix arrow if VOD matching rule is found
                 const playIconPrefix = catName.toLowerCase().includes('vod') ? '► ' : '';
                 pill.textContent = `${playIconPrefix}${catName.toUpperCase()}`;
                 
@@ -389,7 +363,6 @@
             });
         }
 
-        // Apply filters to filter channel rows lists layouts
         function applyFilters() {
             channelListContainer.innerHTML = '';
             let channelsToDisplay = parsedChannelsGlobal;
@@ -397,7 +370,6 @@
             if (activePlaylistTab !== "All Playlists") {
                 channelsToDisplay = channelsToDisplay.filter(c => c.category === activePlaylistTab);
             }
-
             if (activeCategoryFilter !== "ALL") {
                 channelsToDisplay = channelsToDisplay.filter(c => c.category === activeCategoryFilter);
             }
@@ -417,12 +389,10 @@
                     row.classList.add('active');
                     playStream(channel);
                 };
-
                 channelListContainer.appendChild(row);
             });
         }
 
-        // Live player engine controller pipelines definitions through proxy route links
         function playStream(channel) {
             placeholder.style.display = 'none';
             channelTitle.textContent = channel.name;
@@ -430,30 +400,27 @@
 
             if (hlsInstance) hlsInstance.destroy();
 
-            // All streaming video links pass securely through your deployed proxy route context
-            const unblockedStreamUrl = PROXY_URL + encodeURIComponent(channel.url);
+            // FIXED: Direct playback bypasses the proxy to allow pristine streaming
+            const directStreamUrl = channel.url; 
 
-            if (Hls.isSupported()) {
+            if (Hls.isSupported() && directStreamUrl.includes('.m3u8')) {
                 hlsInstance = new Hls();
-                hlsInstance.loadSource(unblockedStreamUrl);
+                hlsInstance.loadSource(directStreamUrl);
                 hlsInstance.attachMedia(videoElement);
-                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => videoElement.play().catch(() => {}));
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                    videoElement.play().catch(() => {});
+                });
                 hlsInstance.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
                         placeholder.style.display = 'block';
-                        placeholder.textContent = "Playback interrupted. Stream address may be offline or temporary token signatures expired.";
+                        placeholder.textContent = "Stream playback failed. The URL format might require a local app context or token update.";
                     }
                 });
-            } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                videoElement.src = unblockedStreamUrl;
-                videoElement.addEventListener('loadedmetadata', () => {
-                    videoElement.play();
-                });
             } else {
-                videoElement.src = unblockedStreamUrl;
+                videoElement.src = directStreamUrl;
                 videoElement.play().catch(() => {
                     placeholder.style.display = 'block';
-                    placeholder.textContent = "Unsupported format architecture.";
+                    placeholder.textContent = "Format error or video access blocked by provider.";
                 });
             }
         }
