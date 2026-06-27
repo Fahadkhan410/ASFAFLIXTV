@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium IPTV Player - Ultimate Fixed</title>
+    <title>Premium IPTV Player - Stable Live Feed</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         :root {
@@ -41,7 +41,7 @@
         #main-content { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); }
         #player-container { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
         video { width: 100%; height: 100%; }
-        #player-placeholder { position: absolute; color: var(--text-muted); font-size: 1.1rem; text-align: center; pointer-events: none; }
+        #player-placeholder { position: absolute; color: var(--text-muted); font-size: 1.1rem; text-align: center; pointer-events: none; z-index: 10; }
         #video-info-bar { padding: 20px; background: var(--bg-sidebar); border-top: 1px solid #27272a; }
         #current-channel-title { font-size: 1.3rem; font-weight: 700; }
         #current-channel-category { font-size: 0.9rem; color: var(--text-muted); margin-top: 4px; }
@@ -59,7 +59,7 @@
             <div class="pill-container" id="category-container"></div>
         </div>
         <div id="channel-list">
-            <div style="padding: 10px; color: var(--text-muted);">Loading system...</div>
+            <div style="padding: 10px; color: var(--text-muted);">Syncing IPTV Nodes...</div>
         </div>
     </div>
 
@@ -70,7 +70,7 @@
         </div>
         <div id="video-info-bar">
             <div id="current-channel-title">No Stream Running</div>
-            <div id="current-channel-category">Select a live dynamic feed.</div>
+            <div id="current-channel-category">Select a live dynamic feed from the sidebar.</div>
         </div>
     </div>
 
@@ -206,7 +206,7 @@
             });
         }
 
-        // চূড়ান্ত ফিক্সড প্লেয়ার ইঞ্জিন যা সাব-ইউআরএল গুলোকেও প্রক্সির আওতায় নিয়ে আসে
+        // চূড়ান্ত ফিক্সড প্লেয়ার ইঞ্জিন যা fMP4 সেগমেন্ট এবং কোয়েরি প্যারামিটার টোকেন লস্ট হতে দেয় না
         function playStream(channel) {
             placeholder.style.display = 'none';
             channelTitle.textContent = channel.name;
@@ -214,23 +214,35 @@
 
             if (hlsInstance) hlsInstance.destroy();
 
+            // মাস্টার লিংকটিকে প্রক্সি দিয়ে এনকোড করা হলো
             const masterManifestUrl = PROXY_URL + encodeURIComponent(channel.url);
 
             if (Hls.isSupported()) {
                 hlsInstance = new Hls({
                     enableWorker: true,
                     lowLatencyMode: true,
-                    // এই প্রোপার্টি ভেতরের রিলেটিভ (.ts / fmp4) ইউআরএল গুলোকে ঠিকঠাক ট্র্যাক করে রি-রুট করে
+                    maxMaxBufferLength: 10,
+                    // এই মেথডটি রিলেটিভ ইউআরএল তৈরির সময় অরিজিনাল টোকেন প্যারামিটার রিটেইন করতে ব্রাউজারকে বাধ্য করে
                     resolveSourceUrl: function(url, bUrl) {
+                        // যদি অলরেডি প্রক্সি ইউআরএল হয়ে থাকে তবে রিটার্ন করবে
                         if (url.startsWith(PROXY_URL)) return url;
-                        // যদি অলরেডি মেইন ইউআরএল থাকে তবে ওটাকে প্রক্সি দিয়ে কাস্টমাইজ করবে
+                        
+                        // যদি পরম ইউআরএল (Absolute URL) হয় তবে প্রক্সি র‍্যাপ করবে
                         if (url.startsWith('http://') || url.startsWith('https://')) {
                             return PROXY_URL + encodeURIComponent(url);
                         }
-                        return url;
+                        
+                        // রিলেটিভ পাথ (.fmp4 / .ts চাঙ্ক) হ্যান্ডেল করা
+                        try {
+                            // প্লেলিস্টের মূল বেস ইউআরএল থেকে সম্পূর্ণ পাথ জেনারেট করা হচ্ছে
+                            const baseUriNode = bUrl.startsWith(PROXY_URL) ? decodeURIComponent(bUrl.split('?url=')[1]) : bUrl;
+                            const absoluteUrl = new URL(url, baseUriNode).href;
+                            return PROXY_URL + encodeURIComponent(absoluteUrl);
+                        } catch (e) {
+                            return url;
+                        }
                     },
                     xhrSetup: function(xhr, url) {
-                        // নিশ্চিত করা হচ্ছে কোনো রিকোয়েস্ট যেন প্রক্সি ছাড়া বাইরে না যায়
                         if (!url.startsWith(PROXY_URL)) {
                             const rewriteUrl = PROXY_URL + encodeURIComponent(url);
                             xhr.open('GET', rewriteUrl, true);
@@ -247,12 +259,13 @@
                 
                 hlsInstance.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
-                        console.log("HLS Error intercepted:", data);
+                        console.error("HLS Intercept Logs:", data);
                         placeholder.style.display = 'block';
-                        placeholder.textContent = "Error: Stream refused or link broken. Ensure token is running in PotPlayer.";
+                        placeholder.textContent = "Error: Stream network drop or handshake refused.";
                     }
                 });
             } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                // Safari Native
                 videoElement.src = masterManifestUrl;
             }
         }
